@@ -1,0 +1,813 @@
+/* =============================================
+   PROFILE.CSS — Premium Profile Page
+   Mario Cuci Sepatu
+   ============================================= */
+
+.profile-root {
+  background: #f4f7fb;
+  min-height: 100%;
+  padding-bottom: 100px;
+}
+
+/* =============================================
+   1. HERO HEADER
+   ============================================= */
+.profile-hero {
+  background: linear-gradient(150deg, #064058 0%, #0a6080 60%, #0e82a8 100%);
+  padding: 28px 16px 60px;
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-hero::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 200px;
+  height: 200px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 50%;
+}
+
+.profile-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -30px;
+  left: -30px;
+  width: 140px;
+  height: 140px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 50%;
+}
+
+.profile-hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* Avatar */
+.profile-avatar-wrap {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.profile-avatar-ring {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.4);
+  padding: 3px;
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.profile-avatar-ring:hover {
+  transform: scale(1.04);
+  border-color: rgba(255,255,255,0.75);
+}
+
+.profile-avatar-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e8f4fb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-avatar-inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-camera-btn {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.profile-camera-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+.profile-camera-btn:active {
+  transform: scale(0.95);
+}
+
+/* Hero name/email */
+.profile-hero-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: white;
+  margin: 0 0 4px;
+  text-align: center;
+  letter-spacing: -0.3px;
+}
+
+.profile-hero-email {
+  font-size: 13px;
+  color: rgba(255,255,255,0.65);
+  margin: 0 0 16px;
+  text-align: center;
+}
+
+/* Membership badge */
+.profile-member-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: white;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 20px;
+}
+
+/* =============================================
+   2. STATS CARD (overlapping hero)
+   ============================================= */
+.profile-stats-card {
+  margin: -36px 16px 0;
+  background: white;
+  border-radius: 18px;
+  padding: 18px 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  box-shadow: 0 6px 24px rgba(6,64,88,0.12);
+  position: relative;
+  z-index: 2;
+}
+
+.profile-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.profile-stat-item + .profile-stat-item {
+  border-left: 1px solid #f0f0f0;
+}
+
+.profile-stat-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.profile-stat-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: #064058;
+  line-height: 1;
+}
+
+.profile-stat-label {
+  font-size: 10px;
+  color: #9ca3af;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* =============================================
+   3. PROFILE COMPLETION BAR
+   ============================================= */
+.profile-completion-card {
+  margin: 12px 16px 0;
+  background: white;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.profile-completion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.profile-completion-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.profile-completion-pct {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #064058;
+}
+
+.profile-progress-track {
+  height: 6px;
+  background: #f0f0f0;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.profile-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #064058, #0a82a8);
+  border-radius: 99px;
+  transition: width 0.6s ease;
+}
+
+.profile-completion-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.profile-hint-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+}
+
+.profile-hint-chip.missing {
+  background: #fff3cd;
+  color: #92400e;
+}
+
+.profile-hint-chip.done {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* =============================================
+   4. SECTION CARDS (shared)
+   ============================================= */
+.profile-section-card {
+  margin: 12px 16px 0;
+  background: white;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.profile-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid #f4f4f4;
+}
+
+.profile-section-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.profile-section-title {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #111827;
+  flex: 1;
+}
+
+.profile-section-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #e8f7fc;
+  color: #064058;
+  border: none;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.profile-section-action-btn:hover {
+  background: #d1edf7;
+}
+
+/* =============================================
+   5. FORM INPUTS
+   ============================================= */
+.profile-form-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.profile-field-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.profile-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0 14px;
+  height: 48px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.profile-input-wrap:focus-within {
+  border-color: #064058;
+  box-shadow: 0 0 0 3px rgba(6,64,88,0.08);
+  background: white;
+}
+
+.profile-input-icon {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.profile-input-wrap input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: #111827;
+  font-family: inherit;
+}
+
+.profile-input-wrap input::placeholder {
+  color: #d1d5db;
+}
+
+.profile-input-readonly {
+  font-size: 14px;
+  color: #6b7280;
+  flex: 1;
+}
+
+.profile-save-btn {
+  width: 100%;
+  height: 50px;
+  background: linear-gradient(135deg, #064058, #0a6080);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  letter-spacing: 0.2px;
+  box-shadow: 0 4px 14px rgba(6,64,88,0.25);
+  margin-top: 4px;
+}
+
+.profile-save-btn:hover {
+  box-shadow: 0 6px 20px rgba(6,64,88,0.3);
+  transform: translateY(-1px);
+}
+
+.profile-save-btn:active {
+  transform: scale(0.97);
+}
+
+/* =============================================
+   6. ADDRESS CARDS
+   ============================================= */
+.address-list {
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.address-card {
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 14px;
+  border: 1.5px solid #e5e7eb;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.address-card.default {
+  border-color: #064058;
+  background: #eef6fa;
+}
+
+.address-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.address-card-label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.address-label-icon {
+  font-size: 16px;
+}
+
+.address-label-text {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.address-default-badge {
+  font-size: 9.5px;
+  font-weight: 800;
+  background: #064058;
+  color: white;
+  padding: 2px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+}
+
+.address-action-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.addr-icon-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.addr-icon-btn:hover {
+  background: #f3f4f6;
+}
+
+.addr-icon-btn:active {
+  transform: scale(0.93);
+}
+
+.addr-icon-btn.danger:hover {
+  background: #fff1f2;
+}
+
+.address-detail-text {
+  font-size: 12.5px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.address-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.addr-text-btn {
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.15s;
+}
+
+.addr-text-btn:hover {
+  opacity: 0.75;
+}
+
+.addr-text-btn.primary {
+  color: #064058;
+}
+
+.addr-text-btn.blue {
+  color: #3b82f6;
+}
+
+/* Empty address state */
+.address-empty-state {
+  margin: 12px 16px;
+  background: #fafafa;
+  border: 2px dashed #e5e7eb;
+  border-radius: 16px;
+  padding: 32px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.address-empty-icon {
+  font-size: 36px;
+  margin-bottom: 4px;
+}
+
+.address-empty-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.address-empty-sub {
+  font-size: 12.5px;
+  color: #9ca3af;
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.address-empty-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #064058;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.address-empty-btn:active {
+  transform: scale(0.96);
+}
+
+/* =============================================
+   7. QUICK MENU
+   ============================================= */
+.profile-menu-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f4f4f4;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+  width: 100%;
+  text-decoration: none;
+}
+
+.profile-menu-item:last-child {
+  border-bottom: none;
+}
+
+.profile-menu-item:hover {
+  background: #f8fafc;
+}
+
+.profile-menu-item:active {
+  background: #f0f4f8;
+}
+
+.menu-item-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.menu-item-text {
+  flex: 1;
+}
+
+.menu-item-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.menu-item-sub {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 1px;
+}
+
+.menu-item-arrow {
+  color: #d1d5db;
+  flex-shrink: 0;
+}
+
+.profile-menu-item.logout-item .menu-item-title {
+  color: #ef4444;
+}
+
+/* =============================================
+   8. ADDRESS MODAL
+   ============================================= */
+.addr-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(3px);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.addr-modal-sheet {
+  background: white;
+  width: 100%;
+  max-width: 420px;
+  border-radius: 24px 24px 0 0;
+  padding: 20px 20px 32px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUpSheet 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.addr-modal-handle {
+  width: 40px;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  margin: 0 auto 20px;
+}
+
+.addr-modal-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 20px;
+}
+
+.addr-modal-field {
+  margin-bottom: 14px;
+}
+
+.addr-modal-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.addr-modal-input {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1.5px solid #e5e7eb;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  background: #f8fafc;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  color: #111827;
+}
+
+.addr-modal-input:focus {
+  border-color: #064058;
+  box-shadow: 0 0 0 3px rgba(6,64,88,0.08);
+  background: white;
+}
+
+.addr-modal-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #e5e7eb;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  background: #f8fafc;
+  box-sizing: border-box;
+  resize: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  color: #111827;
+}
+
+.addr-modal-textarea:focus {
+  border-color: #064058;
+  box-shadow: 0 0 0 3px rgba(6,64,88,0.08);
+  background: white;
+}
+
+.addr-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.addr-modal-submit {
+  flex: 1;
+  height: 50px;
+  background: #064058;
+  color: white;
+  border: none;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.addr-modal-submit:active {
+  transform: scale(0.97);
+}
+
+.addr-modal-cancel {
+  flex: 1;
+  height: 50px;
+  background: #f3f4f6;
+  color: #6b7280;
+  border: none;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.addr-modal-cancel:hover {
+  background: #e5e7eb;
+}
+
+/* =============================================
+   9. ANIMATIONS
+   ============================================= */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.anim-fade { animation: fadeSlideUp 0.4s ease-out both; }
+.anim-fade-2 { animation: fadeSlideUp 0.4s ease-out 0.08s both; }
+.anim-fade-3 { animation: fadeSlideUp 0.4s ease-out 0.16s both; }
