@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userService } from '../services/userService';
+import { orderService } from '../services/orderService';
 import useAuthStore from '../store/authStore';
 import {
   Camera, User, MapPin, Phone, Mail, Edit2, Trash2, Plus,
   Navigation, Map as MapIcon, ChevronRight, History,
   Shield, HelpCircle, LogOut, CheckCircle, AlertCircle,
-  Star, Package, Clock, ArrowLeft
+  Star, Package, Clock, ArrowLeft, House
 } from 'lucide-react';
 import Notification from '../components/Notification';
 import MapPicker from '../components/MapPicker';
@@ -54,10 +55,23 @@ const Profile = () => {
       setProfile(data);
       // Try to derive order stats from profile if available
       if (data.orders) {
+        const completedStatuses = ['RECEIVED', 'READY_DELIVERY', 'READY_PICKUP', 'ON_DELIVERY', 'SUDAH_DIAMBIL', 'FINISHED', 'COMPLETED'];
+        const cancelledStatuses = ['CANCELLED'];
         const total = data.orders.length;
-        const active = data.orders.filter(o => !['completed', 'cancelled'].includes(o.status)).length;
-        const completed = data.orders.filter(o => o.status === 'completed').length;
+        const active = data.orders.filter(o => !completedStatuses.includes(o.status?.toUpperCase()) && !cancelledStatuses.includes(o.status?.toUpperCase())).length;
+        const completed = data.orders.filter(o => completedStatuses.includes(o.status?.toUpperCase())).length;
         setOrderStats({ total, active, completed });
+      } else {
+        // Fallback to fetch from order history
+        orderService.getHistory().then(historyRes => {
+          const orders = historyRes.data || [];
+          const completedStatuses = ['RECEIVED', 'READY_DELIVERY', 'READY_PICKUP', 'ON_DELIVERY', 'SUDAH_DIAMBIL', 'FINISHED', 'COMPLETED'];
+          const cancelledStatuses = ['CANCELLED'];
+          const total = orders.length;
+          const active = orders.filter(o => !completedStatuses.includes(o.status?.toUpperCase()) && !cancelledStatuses.includes(o.status?.toUpperCase())).length;
+          const completed = orders.filter(o => completedStatuses.includes(o.status?.toUpperCase())).length;
+          setOrderStats({ total, active, completed });
+        }).catch(() => {});
       }
     }).catch(() => { });
   }, []);
@@ -65,6 +79,10 @@ const Profile = () => {
   /* ─── Handlers ─── */
   const handleUpdate = (e) => {
     e.preventDefault();
+    if (profile.phone && !profile.phone.startsWith('08') && !profile.phone.startsWith('+62')) {
+      setNotification({ show: true, message: 'Nomor telepon harus diawali dengan 08 atau +62', type: 'error' });
+      return;
+    }
     setNotification({ show: true, message: 'Menyimpan perubahan...', type: 'loading' });
     userService.updateProfile(profile).then((res) => {
       const currentToken = localStorage.getItem('token');
@@ -143,7 +161,10 @@ const Profile = () => {
     window.open(`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`, '_blank');
   };
 
-  const handleLogout = () => {
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutConfirm(false);
     logout();
     navigate('/');
   };
@@ -174,8 +195,8 @@ const Profile = () => {
       <div className="profile-hero anim-fade">
         {/* Back button */}
         <button
+          className="profile-back-btn"
           onClick={() => navigate('/home')}
-          style={{ position: 'absolute', top: 16, left: 16, width: 32, height: 32, borderRadius: 10, background: 'rgba(255,255,255,0.18)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 3 }}
         >
           <ArrowLeft size={16} color="white" />
         </button>
@@ -210,17 +231,23 @@ const Profile = () => {
       ══════════════════════════════════ */}
       <div className="profile-stats-card anim-fade-2">
         <div className="profile-stat-item">
-          <span className="profile-stat-emoji">📦</span>
+          <div className="profile-stat-icon-wrap">
+            <Package size={18} color="#064058" />
+          </div>
           <span className="profile-stat-val">{orderStats.total}</span>
           <span className="profile-stat-label">Total Pesanan</span>
         </div>
         <div className="profile-stat-item">
-          <span className="profile-stat-emoji">🔄</span>
+          <div className="profile-stat-icon-wrap">
+            <History size={18} color="#064058" />
+          </div>
           <span className="profile-stat-val">{orderStats.active}</span>
           <span className="profile-stat-label">Sedang Proses</span>
         </div>
         <div className="profile-stat-item">
-          <span className="profile-stat-emoji">✅</span>
+          <div className="profile-stat-icon-wrap">
+            <CheckCircle size={18} color="#064058" />
+          </div>
           <span className="profile-stat-val">{orderStats.completed}</span>
           <span className="profile-stat-label">Selesai</span>
         </div>
@@ -258,7 +285,9 @@ const Profile = () => {
       ══════════════════════════════════ */}
       <div className="profile-section-card anim-fade-3">
         <div className="profile-section-header">
-          <div className="profile-section-icon" style={{ background: '#e0f2fe' }}>👤</div>
+          <div className="profile-section-icon" style={{ background: 'rgba(6, 64, 88, 0.08)' }}>
+            <User size={18} color="#064058" />
+          </div>
           <span className="profile-section-title">Informasi Pribadi</span>
         </div>
 
@@ -313,7 +342,9 @@ const Profile = () => {
       ══════════════════════════════════ */}
       <div className="profile-section-card anim-fade-3">
         <div className="profile-section-header">
-          <div className="profile-section-icon" style={{ background: '#f0fdf4' }}>📍</div>
+          <div className="profile-section-icon" style={{ background: 'rgba(6, 64, 88, 0.08)' }}>
+            <MapPin size={18} color="#064058" />
+          </div>
           <span className="profile-section-title">Alamat Saya</span>
           <button className="profile-section-action-btn" onClick={openAddAddress}>
             <Plus size={13} /> Tambah
@@ -337,7 +368,7 @@ const Profile = () => {
               <div key={addr.id} className={`address-card ${addr.isDefault ? 'default' : ''}`}>
                 <div className="address-card-top">
                   <div className="address-card-label-row">
-                    <span className="address-label-icon">{getAddressEmoji(addr.label)}</span>
+                    <House size={14} color="#064058" />
                     <span className="address-label-text">{addr.label}</span>
                     {addr.isDefault && <span className="address-default-badge">UTAMA</span>}
                   </div>
@@ -371,40 +402,22 @@ const Profile = () => {
         )}
       </div>
 
-      {/* ══════════════════════════════════
-          6. QUICK MENU
-      ══════════════════════════════════ */}
-      <div className="profile-section-card anim-fade-3" style={{ marginTop: 12 }}>
-        <div className="profile-section-header">
-          <div className="profile-section-icon" style={{ background: '#fef3c7' }}>⚡</div>
-          <span className="profile-section-title">Menu Cepat</span>
-        </div>
-        <div className="profile-menu-list">
-          {QUICK_MENU.map((item, i) => (
-            <button key={i} className="profile-menu-item" onClick={item.action}>
-              <div className="menu-item-icon" style={{ background: item.bg }}>{item.icon}</div>
-              <div className="menu-item-text">
-                <div className="menu-item-title">{item.title}</div>
-                <div className="menu-item-sub">{item.sub}</div>
-              </div>
-              <ChevronRight size={16} className="menu-item-arrow" />
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Removed Quick Menu Section */}
 
       {/* ══════════════════════════════════
           7. ACCOUNT / LOGOUT
       ══════════════════════════════════ */}
       <div className="profile-section-card anim-fade-3" style={{ marginTop: 12 }}>
         <div className="profile-section-header">
-          <div className="profile-section-icon" style={{ background: '#fee2e2' }}>🔐</div>
+          <div className="profile-section-icon" style={{ background: 'rgba(6, 64, 88, 0.08)' }}>
+            <Shield size={18} color="#064058" />
+          </div>
           <span className="profile-section-title">Akun</span>
         </div>
         <div className="profile-menu-list">
-          <button className="profile-menu-item logout-item" onClick={handleLogout}>
-            <div className="menu-item-icon" style={{ background: '#fee2e2' }}>
-              <LogOut size={16} color="#ef4444" />
+          <button className="profile-menu-item logout-item" onClick={() => setShowLogoutConfirm(true)}>
+            <div className="menu-item-icon" style={{ background: 'rgba(6, 64, 88, 0.08)' }}>
+              <LogOut size={16} color="#064058" />
             </div>
             <div className="menu-item-text">
               <div className="menu-item-title">Keluar</div>
@@ -468,6 +481,35 @@ const Profile = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════
+          8. LOGOUT CONFIRM MODAL
+      ══════════════════════════════════ */}
+      {showLogoutConfirm && (
+        <div
+          className="logout-confirm-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowLogoutConfirm(false); }}
+        >
+          <div className="logout-confirm-card">
+            <div className="logout-confirm-icon">
+              <LogOut size={32} color="#ef4444" />
+            </div>
+            <div className="logout-confirm-title">Keluar dari Akun?</div>
+            <p className="logout-confirm-sub">
+              Kamu akan logout dari akun <strong>{firstName}</strong>.
+              Pastikan sudah menyimpan semua yang diperlukan.
+            </p>
+            <div className="logout-confirm-actions">
+              <button className="logout-confirm-yes" onClick={handleLogoutConfirm}>
+                Ya, Keluar
+              </button>
+              <button className="logout-confirm-no" onClick={() => setShowLogoutConfirm(false)}>
+                Batal
+              </button>
+            </div>
           </div>
         </div>
       )}

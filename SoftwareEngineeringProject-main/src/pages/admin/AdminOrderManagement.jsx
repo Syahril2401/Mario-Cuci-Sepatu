@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { orderService, getStatusFlow, getStatusColor, canUpdateStatus, STATUS_LABELS } from '../../services/orderService';
 import { Search, Filter, Package, Clock, Check, X, MapPin, Calendar, Smartphone, User, MessageCircle, FileText, Truck, UserCheck, Camera, CheckCircle2, ArrowUpRight, AlertCircle } from 'lucide-react';
 import './Admin.css';
 import '../Pages.css';
 
 const AdminOrderManagement = () => {
+  const location = useLocation();
   const [orders, setOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('All');
+  const [filterStatus, setFilterStatus] = useState(location.state?.filter || 'All');
   const [updatingId, setUpdatingId] = useState(null);
   const [successId, setSuccessId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -198,12 +200,35 @@ const AdminOrderManagement = () => {
     }
   };
 
+  const FILTER_OPTIONS = [
+    { value: 'All', label: 'Semua' },
+    { value: 'MENUNGGU_VERIFIKASI', label: 'Menunggu Verifikasi Pembayaran' },
+    { value: 'MENUNGGU_PENGANTARAN', label: 'Menunggu Pengantaran Barang' },
+    { value: 'BARANG_DITERIMA', label: 'Barang Sudah Diterima' },
+    { value: 'PROCESSING', label: 'Sedang Diproses' },
+    { value: 'READY_PICKUP', label: 'Siap Diambil' },
+    { value: 'SUDAH_DIAMBIL', label: 'Sudah Diambil' },
+    { value: 'FINISHED', label: 'Selesai' },
+    { value: 'CANCELLED', label: 'Dibatalkan' }
+  ];
+
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = String(order.order_id).toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'All' || 
-                          (filterStatus === 'FINISHED' && (order.status === 'FINISHED' || order.status === 'COMPLETED')) ||
-                          order.status === filterStatus;
-    return matchesSearch && matchesStatus;
+    const searchString = `${order.order_id} ${order.customerName}`.toLowerCase();
+    const matchesSearch = searchString.includes(searchTerm.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    if (filterStatus === 'All') return true;
+
+    if (filterStatus === 'MENUNGGU_VERIFIKASI') return ['MENUNGGU_VERIFIKASI', 'PENDING'].includes(order.status);
+    if (filterStatus === 'MENUNGGU_PENGANTARAN') return ['MENUNGGU_PENGANTARAN', 'WAITING_PICKUP', 'ANTRI'].includes(order.status);
+    if (filterStatus === 'BARANG_DITERIMA') return ['BARANG_DITERIMA', 'BARANG_DIAMBIL'].includes(order.status);
+    if (filterStatus === 'PROCESSING') return ['PROCESSING'].includes(order.status);
+    if (filterStatus === 'READY_PICKUP') return ['READY_PICKUP', 'READY_DELIVERY', 'READY'].includes(order.status);
+    if (filterStatus === 'SUDAH_DIAMBIL') return ['SUDAH_DIAMBIL', 'RECEIVED', 'ON_DELIVERY', 'DELIVERED'].includes(order.status);
+    if (filterStatus === 'FINISHED') return ['FINISHED', 'COMPLETED'].includes(order.status);
+    if (filterStatus === 'CANCELLED') return ['CANCELLED'].includes(order.status);
+    
+    return order.status === filterStatus;
   });
 
   const handleCardClick = (order) => {
@@ -233,18 +258,50 @@ const AdminOrderManagement = () => {
       </div>
 
       {/* Search & Filter */}
-      <div className="adm-fade2" style={{ display:'flex', gap:10, marginBottom:18 }}>
-        <div className="adm-search-wrap">
-          <Search size={15} className="adm-search-icon" />
-          <input className="adm-search-input" placeholder="Cari order ID..." value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)} />
+      <div className="adm-fade2" style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', background: 'white', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '4px 8px', width: '100%' }}>
+          <Search size={16} color="#9CA3AF" style={{ marginLeft: '4px' }} />
+          <input 
+            placeholder="Cari order ID atau nama..." 
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)} 
+            style={{ border: 'none', outline: 'none', background: 'transparent', padding: '8px', width: '100%', fontSize: '0.9rem' }}
+          />
+          <button style={{ background: '#064058', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 16px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>
+            Cari
+          </button>
         </div>
-        <select className="adm-filter-select" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          <option value="All">Semua</option>
-          {Object.keys(STATUS_LABELS).map(key => (
-            <option key={key} value={key}>{STATUS_LABELS[key]}</option>
+        
+        {/* Horizontal Button Filters */}
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="hide-scroll">
+          <button
+            onClick={() => setFilterStatus('All')}
+            style={{
+              padding: '8px 16px', borderRadius: '20px', border: '1px solid', whiteSpace: 'nowrap',
+              borderColor: filterStatus === 'All' ? '#064058' : '#E5E7EB',
+              backgroundColor: filterStatus === 'All' ? '#064058' : 'white',
+              color: filterStatus === 'All' ? 'white' : '#4B5563',
+              fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s'
+            }}
+          >
+            Semua
+          </button>
+          {FILTER_OPTIONS.filter(opt => opt.value !== 'All').map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setFilterStatus(opt.value)}
+              style={{
+                padding: '8px 16px', borderRadius: '20px', border: '1px solid', whiteSpace: 'nowrap',
+                borderColor: filterStatus === opt.value ? '#064058' : '#E5E7EB',
+                backgroundColor: filterStatus === opt.value ? '#064058' : 'white',
+                color: filterStatus === opt.value ? 'white' : '#4B5563',
+                fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s'
+              }}
+            >
+              {opt.label}
+            </button>
           ))}
-        </select>
+        </div>
       </div>
 
       {/* Orders List */}
@@ -290,7 +347,7 @@ const AdminOrderManagement = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#111827' }}>{order.order_id}</h4>
-                    {order.is_overflow_order && (
+                    {!!order.is_overflow_order && (
                       <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#D97706', backgroundColor: '#FFFBEB', padding: '2px 8px', borderRadius: '4px', border: '1px solid #FEF3C7', width: 'fit-content' }}>
                         📅 Scheduled for Tomorrow
                       </span>
@@ -746,6 +803,9 @@ const AdminOrderManagement = () => {
         }
         .order-card-admin:active {
           transform: scale(0.98);
+        }
+        .hide-scroll::-webkit-scrollbar {
+          display: none;
         }
       `}</style>
       {confirmPopup && (

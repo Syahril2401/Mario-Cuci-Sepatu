@@ -81,7 +81,7 @@ const OrderHistory = () => {
   useEffect(() => {
     orderService.getHistory().then(res => {
       // Only show FINISHED and CANCELLED orders in history
-      const filtered = res.data.filter(order => 
+      const filtered = res.data.filter(order =>
         order.status === 'FINISHED' || order.status === 'CANCELLED'
       );
       setHistory([...filtered].reverse());
@@ -138,24 +138,6 @@ const OrderHistory = () => {
           <ArrowLeft size={18} color="#064058" />
         </button>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F172A', margin: 0, flex: 1 }}>Riwayat Pesanan</h2>
-        {history.length > 0 && (
-          <button 
-            onClick={async () => {
-              if (window.confirm("Hapus semua data order? Tindakan ini tidak bisa dibatalkan.")) {
-                await orderService.clearOrders();
-                setHistory([]);
-                alert("Semua data order telah dihapus.");
-              }
-            }}
-            style={{ 
-              backgroundColor: '#FEE2E2', color: '#EF4444', border: 'none', 
-              borderRadius: '8px', padding: '6px 12px', fontSize: '0.75rem', 
-              fontWeight: 700, cursor: 'pointer' 
-            }}
-          >
-            Hapus Semua
-          </button>
-        )}
       </div>
 
       {history.length === 0 ? (
@@ -296,18 +278,18 @@ const OrderHistory = () => {
         <div className="modal-overlay open" style={{ zIndex: 1000, padding: '16px', alignItems: 'center' }}>
           <div className="modal-content" style={{ maxHeight: '90vh', overflowY: 'auto', borderRadius: '24px', padding: '24px', backgroundColor: 'white' }}>
             {/* Shopee-style Modal Header */}
-            <div style={{ 
-              backgroundColor: getStatusColor(selectedOrder.status).bg, 
-              margin: '-24px -24px 24px -24px', 
+            <div style={{
+              backgroundColor: getStatusColor(selectedOrder.status).bg,
+              margin: '-24px -24px 24px -24px',
               padding: '32px 24px',
-              borderTopLeftRadius: '24px', 
+              borderTopLeftRadius: '24px',
               borderTopRightRadius: '24px',
               display: 'flex',
               flexDirection: 'column',
               gap: '12px'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ 
+                <div style={{
                   backgroundColor: 'white', padding: '10px', borderRadius: '16px',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                 }}>
@@ -336,23 +318,23 @@ const OrderHistory = () => {
                 </h4>
                 <div style={{ position: 'relative', paddingLeft: '32px' }}>
                   {/* Vertical Line */}
-                  <div style={{ 
-                    position: 'absolute', left: '11px', top: '10px', bottom: '10px', 
-                    width: '2px', backgroundColor: '#E2E8F0' 
+                  <div style={{
+                    position: 'absolute', left: '11px', top: '10px', bottom: '10px',
+                    width: '2px', backgroundColor: '#E2E8F0'
                   }}></div>
-                  
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     {getStatusFlow(selectedOrder).map((status, idx) => {
                       const flow = getStatusFlow(selectedOrder);
                       const currentIndex = flow.indexOf(selectedOrder.status);
                       const isCompleted = idx < currentIndex;
                       const isCurrent = idx === currentIndex;
-                      
+
                       return (
                         <div key={status} style={{ position: 'relative' }}>
                           {/* Step Indicator */}
-                          <div style={{ 
-                            position: 'absolute', left: '-27px', top: '2px', 
+                          <div style={{
+                            position: 'absolute', left: '-27px', top: '2px',
                             width: '12px', height: '12px', borderRadius: '50%',
                             backgroundColor: isCurrent ? getStatusColor(status).text : (isCompleted ? '#064058' : '#CBD5E1'),
                             border: isCurrent ? `4px solid ${getStatusColor(status).bg}` : '2px solid white',
@@ -362,11 +344,11 @@ const OrderHistory = () => {
                           }}>
                             {isCompleted && <Check size={8} color="white" strokeWidth={4} />}
                           </div>
-                          
+
                           <div style={{ opacity: (isCompleted || isCurrent) ? 1 : 0.5 }}>
-                            <p style={{ 
-                              margin: 0, fontSize: '0.875rem', fontWeight: isCurrent ? 800 : 600, 
-                              color: isCurrent ? getStatusColor(status).text : '#1E293B' 
+                            <p style={{
+                              margin: 0, fontSize: '0.875rem', fontWeight: isCurrent ? 800 : 600,
+                              color: isCurrent ? getStatusColor(status).text : '#1E293B'
                             }}>
                               {STATUS_LABELS[status]}
                             </p>
@@ -395,7 +377,7 @@ const OrderHistory = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <div style={{ color: '#64748B' }}><MapPin size={20} /></div>
                     <div style={{ flex: 1 }}>
@@ -474,11 +456,11 @@ const OrderHistory = () => {
                 </div>
               </section>
 
-              <button 
-                onClick={closeDetail} 
-                style={{ 
-                  width: '100%', padding: '16px', borderRadius: '16px', 
-                  backgroundColor: '#064058', color: 'white', border: 'none', 
+              <button
+                onClick={closeDetail}
+                style={{
+                  width: '100%', padding: '16px', borderRadius: '16px',
+                  backgroundColor: '#064058', color: 'white', border: 'none',
                   fontWeight: 800, fontSize: '1rem', cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(6, 64, 88, 0.2)'
                 }}

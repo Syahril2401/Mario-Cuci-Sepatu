@@ -22,13 +22,14 @@ exports.getDashboardStats = async (req, res) => {
     // 6. Pending Orders (Attention needed)
     const [pendingOrders] = await db.execute('SELECT COUNT(*) as count FROM orders WHERE status IN ("PENDING", "MENUNGGU_VERIFIKASI", "ANTRI")');
 
-    // 7. Recent Orders (Last 5)
+    // 7. Recent Orders (Order Selesai)
     const [recentOrders] = await db.execute(`
       SELECT o.*, u.name as customerName, u.phone as customerPhone, u.profileImage, s.serviceName as service 
       FROM orders o 
       LEFT JOIN users u ON o.user_id = u.user_id 
       LEFT JOIN services s ON o.service_id = s.service_id 
-      ORDER BY o.created_at DESC LIMIT 5
+      WHERE o.status IN ("FINISHED", "COMPLETED")
+      ORDER BY o.created_at DESC LIMIT 3
     `);
 
     // 8. Needs Attention Orders

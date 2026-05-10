@@ -153,9 +153,19 @@ exports.createOrder = async (req, res) => {
 
 exports.updateOrder = async (req, res) => {
   try {
-    const { status } = req.body;
-    await Order.updateStatus(req.params.id, status);
-    res.json({ message: 'Order updated', data: { order_id: req.params.id, status } });
+    const orderData = req.body;
+    // We pass the whole body, the model will pick what it needs
+    await Order.update(req.params.id, orderData);
+    res.json({ message: 'Order updated', data: { order_id: req.params.id, ...orderData } });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.deleteOrder = async (req, res) => {
+  try {
+    await Order.delete(req.params.id);
+    res.json({ message: 'Order deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -5,12 +5,12 @@
 
 /* ── Overlay ─────────────────────────────── */
 .drawer-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0);
   visibility: hidden;
   transition: background 0.32s ease, visibility 0s ease 0.32s;
-  z-index: 40;
+  z-index: 999;
 }
 
 .drawer-overlay.open {
@@ -21,13 +21,13 @@
 
 /* ── Drawer Panel ─────────────────────────── */
 .app-drawer {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   bottom: 0;
   width: 290px;
   background: white;
-  z-index: 50;
+  z-index: 1000;
   transform: translateX(-100%);
   transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
   display: flex;
@@ -66,21 +66,23 @@
   position: absolute;
   top: 14px;
   right: 14px;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.15);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(8px);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 0.2s, transform 0.15s;
-  z-index: 1;
+  z-index: 2;
 }
 
 .drawer-close-btn:hover {
   background: rgba(255, 255, 255, 0.25);
+  transform: rotate(90deg);
 }
 
 .drawer-close-btn:active {
@@ -222,26 +224,27 @@
   margin: 1px 0;
   text-decoration: none;
   border: none;
-  background: none;
+  background: transparent !important;
   width: 100%;
   cursor: pointer;
   text-align: left;
   transition: none;
   position: relative;
+  box-sizing: border-box;
 }
 
 .drawer-nav-item-inner {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 11px 10px;
+  padding: 11px 14px;
   border-radius: 12px;
   width: 100%;
   transition: background 0.18s;
 }
 
 .drawer-nav-item:hover .drawer-nav-item-inner {
-  background: #f4f7fb;
+  background: #e0f2fe;
 }
 
 .drawer-nav-item:active .drawer-nav-item-inner {
@@ -249,6 +252,11 @@
 }
 
 .drawer-nav-item.active .drawer-nav-item-inner {
+  background: #e8f7fc;
+}
+
+/* Prevent double highlight: active items keep their own bg on hover */
+.drawer-nav-item.active:hover .drawer-nav-item-inner {
   background: #e8f7fc;
 }
 
@@ -265,13 +273,19 @@
 }
 
 .drawer-nav-item:hover .drawer-item-icon {
-  transform: scale(1.08);
+  transform: scale(1.15);
 }
 
 /* Text */
 .drawer-item-text {
   flex: 1;
   min-width: 0;
+  transition: transform 0.15s ease-in-out;
+  transform-origin: left center;
+}
+
+.drawer-nav-item:hover .drawer-item-text {
+  transform: scale(1.03);
 }
 
 .drawer-item-label {
@@ -310,18 +324,7 @@
   color: #064058;
 }
 
-/* Active left bar */
-.drawer-nav-item.active::before {
-  content: '';
-  position: absolute;
-  left: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 24px;
-  background: #064058;
-  border-radius: 2px;
-}
+
 
 /* ── Divider ──────────────────────────────── */
 .drawer-divider {
@@ -429,7 +432,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
-  z-index: 200;
+  z-index: 2000;
   display: flex;
   align-items: center;
   justify-content: center;

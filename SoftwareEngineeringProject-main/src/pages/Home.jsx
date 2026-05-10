@@ -10,11 +10,14 @@ import {
   ChevronRight, Star,
   Sparkles, ShoppingBag, Package, ArrowRight,
   CheckCircle, Circle, Loader,
-  Search, History, Tag, MessageCircle
+  Search, History, Tag, MessageCircle,
+  Handbag, SportShoe, LayoutGrid, ShoppingCart
 } from 'lucide-react';
 import './Home.css';
 
 import { InstagramIcon, WhatsappIcon } from '../components/Icons';
+import logo from '../assets/logo.png';
+
 // ─── Static Data ──────────────────────────────────────────────
 const TESTIMONIALS = [
   { id: 1, initials: 'A', name: 'Andi Setiawan', role: 'Pelanggan Tetap', text: 'Sepatu lama jadi kinclong banget! Prosesnya cepet dan hasilnya beyond expectation.', stars: 5 },
@@ -24,10 +27,10 @@ const TESTIMONIALS = [
 ];
 
 const QUICK_ACTIONS = [
-  { label: 'Order', icon: <Package size={22} color="#0284c7" />, bg: 'linear-gradient(135deg,#e0f2fe,#bae6fd)', action: 'order' },
-  { label: 'Status', icon: <History size={20} color="#d97706" />, bg: 'linear-gradient(135deg,#fef3c7,#fde68a)', action: 'status' },
-  { label: 'Riwayat', icon: <Clock size={22} color="#16a34a" />, bg: 'linear-gradient(135deg,#dcfce7,#bbf7d0)', action: 'history' },
-  { label: 'Kontak', icon: <MessageCircle size={22} color="#e11d48" />, bg: 'linear-gradient(135deg,#fff1f2,#fecdd3)', action: 'contact' },
+  { label: 'Order', icon: <ShoppingCart size={22} color="#064058" />, bg: 'rgba(6, 64, 88, 0.08)', action: 'order' },
+  { label: 'Status', icon: <Package size={20} color="#064058" />, bg: 'rgba(6, 64, 88, 0.08)', action: 'status' },
+  { label: 'Riwayat', icon: <Clock size={22} color="#064058" />, bg: 'rgba(6, 64, 88, 0.08)', action: 'history' },
+  { label: 'Kontak', icon: <Phone size={22} color="#064058" />, bg: 'rgba(6, 64, 88, 0.08)', action: 'contact' },
 ];
 
 const PROMO_SLIDES = [
@@ -183,8 +186,14 @@ const Home = () => {
       handleOrderClick();
       return;
     }
-    const map = { history: '/order-history', status: '/order-status', contact: '/contact', promo: null };
-    if (map[action]) navigate(map[action]);
+    const map = { history: '/order-status', status: '/order-status', contact: '/contact', promo: null };
+    if (map[action]) {
+      if (action === 'history') {
+        navigate(map[action], { state: { tab: 'Selesai' } });
+      } else {
+        navigate(map[action]);
+      }
+    }
   };
 
   const filteredServices = services.filter(s => selectedType === 'all' || s.type === selectedType);
@@ -209,14 +218,14 @@ const Home = () => {
             <div className="hero-shoe-icon">👟</div>
           </div>
           <button className="hero-cta-btn" onClick={handleOrderClick}>
-            <ShoppingBag size={14} /> Order Sekarang
+            <ShoppingCart size={14} /> Order Sekarang
           </button>
           <div className="hero-stats-row">
             <div className="hero-stat"><span className="hero-stat-val">100+</span><span className="hero-stat-label">Pelanggan</span></div>
             <div className="hero-stat-sep" />
             <div className="hero-stat"><span className="hero-stat-val">2–3 hr</span><span className="hero-stat-label">Proses</span></div>
             <div className="hero-stat-sep" />
-            <div className="hero-stat"><span className="hero-stat-val">⭐ 4.9</span><span className="hero-stat-label">Rating</span></div>
+            <div className="hero-stat"><span className="hero-stat-val"><Star size={12} fill="white" /> 4.9</span><span className="hero-stat-label">Rating</span></div>
           </div>
         </div>
       </div>
@@ -257,7 +266,7 @@ const Home = () => {
 
       {/* Filter Tabs */}
       <div className="home-filter-tabs">
-        {[{ key: 'all', label: '✨ Semua' }, { key: 'sepatu', label: '👟 Sepatu' }, { key: 'tas', label: '👜 Tas' }].map(tab => (
+        {[{ key: 'all', label: <><LayoutGrid size={14} />  Semua</> }, { key: 'sepatu', label: <><SportShoe size={14} />  Sepatu</> }, { key: 'tas', label: <><Handbag size={14} />  Tas</> }].map(tab => (
           <button key={tab.key} className={`filter-tab ${selectedType === tab.key ? 'active' : ''}`} onClick={() => setSelectedType(tab.key)}>
             {tab.label}
           </button>
@@ -316,48 +325,7 @@ const Home = () => {
             </div>
           );
         })}
-      </div>
-
-      {/* ══ 6. TESTIMONIALS ══════════════════════════════ */}
-      <div className="home-section" style={{ paddingBottom: 0 }}>
-        <div className="section-top">
-          <div>
-            <div className="section-title">Yang Pelanggan Bilang</div>
-            <div className="section-subtitle">Dipercaya 100+ pelanggan di Surabaya</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="testimonial-scroll">
-        {TESTIMONIALS.map((t, i) => (
-          <div key={t.id} className="testi-card">
-            <p className="testi-text">"{t.text}"</p>
-            <div className="testi-author-row">
-              <div className="testi-avatar" style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}>{t.initials}</div>
-              <div>
-                <div className="testi-name">{t.name}</div>
-                <div className="testi-role">{t.role}</div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ══ 7. ABOUT ═════════════════════════════════════ */}
-      <div className="about-section">
-        <div className="section-top" style={{ marginBottom: 10 }}>
-          <div className="section-title">Tentang Kami</div>
-        </div>
-        <p className="about-text">
-          Mario Cuci Sepatu hadir sebagai solusi perawatan sepatu premium di Surabaya.
-          Kami menggunakan bahan pembersih ramah lingkungan dan teknik khusus untuk
-          menjaga kualitas sepatu dan tas Anda tetap prima dan awet.
-        </p>
-        <div className="stats-row">
-          <div className="stat-card"><span className="stat-emoji">🏆</span><span className="stat-val">5+</span><span className="stat-label">Tahun</span></div>
-          <div className="stat-card"><span className="stat-emoji">👟</span><span className="stat-val">10k+</span><span className="stat-label">Sepatu</span></div>
-          <div className="stat-card"><span className="stat-emoji">😊</span><span className="stat-val">100+</span><span className="stat-label">Customer</span></div>
-        </div>
+        <br />
       </div>
 
       {/* ══ 8. LOCATION ══════════════════════════════════ */}
@@ -370,86 +338,59 @@ const Home = () => {
             <div className="location-icon-badge"><MapPin size={18} color="#064058" /></div>
             <div>
               <div className="location-name">Mario Cuci Sepatu</div>
-              <div className="location-address">Northwest Lake, Babat Jerawat,<br />Kec. Pakal, Surabaya</div>
+              <div className="location-address">Northwest Lake NG18-31, Babat Jerawat,<br />Kec. Pakal, Surabaya</div>
             </div>
           </div>
           <div className="location-hours-row"><Clock size={12} /> Buka Senin–Sabtu · 09.00–18.00</div>
           <div className="location-map-wrap"><MapViewer latitude={-7.259870} longitude={112.624012} height="180px" /></div>
           <div className="location-cta">
             <button className="btn-nav-primary" onClick={() => window.open('https://www.openstreetmap.org/search?query=-7.259870%2C112.624012&zoom=17&minlon=112.60023951530458&minlat=-7.26245734649342&maxlon=112.62083888053895&maxlat=-7.252495609228964#map=17/-7.259871/112.624015', '_blank', '_blank')}>
-              <Navigation size={14} /> Arah
-            </button>
-            <button className="btn-nav-secondary" onClick={() => window.open('https://wa.me/6281233981688', '_blank')}>
-              <Phone size={14} /> Chat
+              <Navigation size={14} /> Get Direction
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* ══ 9. CONTACT ═══════════════════════════════════ */}
-      <div className="contact-section">
-        <div className="section-top" style={{ marginBottom: 12 }}>
-          <div className="section-title">Hubungi Kami</div>
-          <div className="section-subtitle">Kami siap membantu Anda</div>
-        </div>
-        <div className="contact-cards-list">
-          {[
-            { icon: <WhatsappIcon size={20} />, title: 'WhatsApp', sub: 'Respon cepat · Online', bg: '#dcfce7', onClick: () => window.open('https://wa.me/6281233981688', '_blank') },
-            { icon: <InstagramIcon size={20} />, title: 'Instagram', sub: 'Hasil kerja & promo terbaru', bg: '#fce7f3', onClick: () => window.open('https://instagram.com/mariocucisepatu', '_blank') },
-            { icon: '📞', title: 'Pusat Bantuan', sub: 'Lihat semua cara menghubungi', bg: '#e0f2fe', onClick: () => navigate('/contact') },
-          ].map((c, i) => (
-            <button key={i} className="contact-modern-card" onClick={c.onClick}>
-              <div className="contact-card-icon" style={{ background: c.bg }}>{c.icon}</div>
-              <div className="contact-card-body">
-                <div className="contact-card-title">{c.title}</div>
-                <div className="contact-card-sub">{c.sub}</div>
-              </div>
-              <ChevronRight size={16} className="contact-card-arrow" />
-            </button>
-          ))}
         </div>
       </div>
 
       {/* ══ 10. FOOTER ═══════════════════════════════════ */}
       <div className="home-footer">
         <div className="footer-content">
-          <div className="footer-brand-section">
-            <div className="footer-logo-row">
-              <span className="footer-logo-icon">👟</span>
-              <span className="footer-brand">Mario Cuci Sepatu</span>
-            </div>
-            <p className="footer-desc">Premium shoe care specialist di Surabaya dengan layanan profesional antar-jemput.</p>
+          {/* Logo centered */}
+          <div className="footer-logo-center">
+            <img src={logo} alt="Mario Cuci Sepatu" className="footer-logo-img" />
           </div>
+
+          <h3 className="footer-brand-title">Mario Cuci Sepatu</h3>
+          <p className="footer-tagline">Premium Shoe Care Specialist</p>
 
           <div className="footer-divider" />
 
           <div className="footer-info-row">
             <div className="footer-info-item">
-              <MapPin size={14} className="footer-icon-accent" />
+              <MapPin size={13} className="footer-icon-accent" />
               <span className="footer-info-text">Northwest Lake, Babat Jerawat, Surabaya</span>
             </div>
             <div className="footer-info-item">
-              <Clock size={14} className="footer-icon-accent" />
+              <Clock size={13} className="footer-icon-accent" />
               <span className="footer-info-text">Senin–Sabtu · 09.00–18.00 WIB</span>
             </div>
             <div className="footer-info-item">
-              <Phone size={14} className="footer-icon-accent" />
+              <Phone size={13} className="footer-icon-accent" />
               <span className="footer-info-text">+62 812 3398 1688</span>
             </div>
           </div>
 
           <div className="footer-social-row">
             <button className="footer-social-btn" onClick={() => window.open('https://wa.me/6281233981688', '_blank')}>
-              <WhatsappIcon size={16} /> WhatsApp
+              <WhatsappIcon size={15} /> WhatsApp
             </button>
             <button className="footer-social-btn" onClick={() => window.open('https://instagram.com/mariocucisepatu', '_blank')}>
-              <InstagramIcon size={16} /> Instagram
+              <InstagramIcon size={15} /> Instagram
             </button>
           </div>
         </div>
 
         <div className="footer-bottom">
-          <div className="footer-copyright">© {new Date().getFullYear()} Mario Cuci Sepatu · Made with ❤️ in Surabaya</div>
+          <div className="footer-copyright">© {new Date().getFullYear()} Mario Cuci Sepatu · Based in Surabaya</div>
         </div>
       </div>
 

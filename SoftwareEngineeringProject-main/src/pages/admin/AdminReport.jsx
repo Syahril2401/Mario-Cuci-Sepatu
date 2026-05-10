@@ -1,20 +1,21 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { orderService, STATUS_LABELS, getStatusColor } from '../../services/orderService';
+import { serviceService } from '../../services/serviceService';
 import { TrendingUp, Calendar, Download, FileText, Wallet, Package, ArrowUpRight, CheckCircle2, XCircle } from 'lucide-react';
 import Notification from '../../components/Notification';
 import './Admin.css';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const RANGE_FILTERS = [
-  { key: 'daily',   label: 'Harian' },
-  { key: 'weekly',  label: 'Mingguan' },
+  { key: 'daily', label: 'Harian' },
+  { key: 'weekly', label: 'Mingguan' },
   { key: 'monthly', label: 'Bulanan' },
-  { key: 'yearly',  label: 'Tahunan' },
+  { key: 'yearly', label: 'Tahunan' },
 ];
 
-const MONTH_NAMES_SHORT = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
-const MONTH_NAMES_FULL  = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-const DAY_NAMES         = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+const MONTH_NAMES_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+const MONTH_NAMES_FULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+const DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const getPrice = (o) => {
@@ -29,6 +30,7 @@ const isCounted = (o) =>
 // ─── Component ───────────────────────────────────────────────────────────────
 const AdminReport = () => {
   const [orders, setOrders] = useState([]);
+  const [allServices, setAllServices] = useState([]);
   const [range, setRange] = useState('monthly');
   const [notification, setNotification] = useState({ show: false, message: '', type: 'loading' });
   // For daily view: start of the selected week (Monday). Default = this week's Monday.
@@ -42,15 +44,20 @@ const AdminReport = () => {
   });
 
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchData = async () => {
       try {
-        const response = await orderService.getHistory();
-        setOrders(response.data || []);
+        const [orderRes, svcRes] = await Promise.all([
+          orderService.getHistory(),
+          serviceService.getServicesList()
+        ]);
+        setOrders(orderRes.data || []);
+        setAllServices(svcRes.data || []);
       } catch (err) {
         setOrders([]);
+        setAllServices([]);
       }
     };
-    fetchOrders();
+    fetchData();
   }, []);
 
   const now = new Date();
@@ -66,30 +73,34 @@ const AdminReport = () => {
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
       sunday.setHours(23, 59, 59, 999);
-      const labels = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+      const labels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
       const getter = (order) => {
         const d = order.created_at || order.createdAt;
         if (!d) return null;
         const day = new Date(d).getDay(); // 0=Sun
         return day === 0 ? 6 : day - 1;  // Mon=0 … Sun=6
       };
-      return { startDate: monday, endDate: sunday, chartLabels: labels, chartGetter: getter,
-        rangeLabel: `${monday.toLocaleDateString('id-ID',{day:'numeric',month:'short'})} – ${sunday.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}` };
+      return {
+        startDate: monday, endDate: sunday, chartLabels: labels, chartGetter: getter,
+        rangeLabel: `${monday.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} – ${sunday.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`
+      };
     }
 
     // ── MINGGUAN: Mgg 1–4 bulan ini ───────────────────────────────────────
     if (range === 'weekly') {
       s.setDate(1); s.setHours(0, 0, 0, 0);
       e.setMonth(e.getMonth() + 1); e.setDate(0); e.setHours(23, 59, 59, 999);
-      const labels = ['Mgg 1','Mgg 2','Mgg 3','Mgg 4'];
+      const labels = ['Mgg 1', 'Mgg 2', 'Mgg 3', 'Mgg 4'];
       const getter = (order) => {
         const d = order.created_at || order.createdAt;
         if (!d) return null;
         const weekIdx = Math.floor((new Date(d).getDate() - 1) / 7);
         return Math.min(weekIdx, 3); // clamp to 0–3
       };
-      return { startDate: s, endDate: e, chartLabels: labels, chartGetter: getter,
-        rangeLabel: `${MONTH_NAMES_FULL[now.getMonth()]} ${now.getFullYear()} · Per Minggu` };
+      return {
+        startDate: s, endDate: e, chartLabels: labels, chartGetter: getter,
+        rangeLabel: `${MONTH_NAMES_FULL[now.getMonth()]} ${now.getFullYear()} · Per Minggu`
+      };
     }
 
     // ── BULANAN: Jan–Des tahun ini ─────────────────────────────────────────
@@ -101,13 +112,15 @@ const AdminReport = () => {
         const d = order.created_at || order.createdAt;
         return d ? new Date(d).getMonth() : null; // 0=Jan … 11=Des
       };
-      return { startDate: s, endDate: e, chartLabels: labels, chartGetter: getter,
-        rangeLabel: `Tahun ${now.getFullYear()} · Per Bulan` };
+      return {
+        startDate: s, endDate: e, chartLabels: labels, chartGetter: getter,
+        rangeLabel: `Tahun ${now.getFullYear()} · Per Bulan`
+      };
     }
 
     // ── TAHUNAN: 10 tahun terakhir ─────────────────────────────────────────
     const currentYear = now.getFullYear();
-    const startYear   = currentYear - 9;
+    const startYear = currentYear - 9;
     s.setFullYear(startYear, 0, 1); s.setHours(0, 0, 0, 0);
     e.setFullYear(currentYear, 11, 31); e.setHours(23, 59, 59, 999);
     const labels = Array.from({ length: 10 }, (_, i) => String(startYear + i));
@@ -118,8 +131,10 @@ const AdminReport = () => {
       const idx = yr - startYear;
       return idx >= 0 && idx < 10 ? idx : null;
     };
-    return { startDate: s, endDate: e, chartLabels: labels, chartGetter: getter,
-      rangeLabel: `${startYear} – ${currentYear} · Per Tahun` };
+    return {
+      startDate: s, endDate: e, chartLabels: labels, chartGetter: getter,
+      rangeLabel: `${startYear} – ${currentYear} · Per Tahun`
+    };
   }, [range, selectedWeekStart]);
 
   // ── Filter orders to selected time range ────────────────────────────────────
@@ -132,9 +147,9 @@ const AdminReport = () => {
     }), [orders, startDate, endDate]);
 
   const revenueOrders = filteredOrders.filter(isCounted);
-  const totalRevenue  = revenueOrders.reduce((s, o) => s + getPrice(o), 0);
-  const totalOrders   = revenueOrders.length;
-  const avgOrder      = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+  const totalRevenue = revenueOrders.reduce((s, o) => s + getPrice(o), 0);
+  const totalOrders = revenueOrders.length;
+  const avgOrder = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
   const completedCount = revenueOrders.filter(o => o.status === 'FINISHED' || o.status === 'RECEIVED' || o.status === 'SUDAH_DIAMBIL').length;
   const cancelledCount = filteredOrders.filter(o => o.status === 'CANCELLED').length;
 
@@ -143,7 +158,7 @@ const AdminReport = () => {
     chartLabels.map((_, idx) =>
       revenueOrders.filter(o => chartGetter(o) === idx).reduce((s, o) => s + getPrice(o), 0)
     )
-  , [revenueOrders, chartLabels, chartGetter]);
+    , [revenueOrders, chartLabels, chartGetter]);
 
   const maxChart = Math.max(...chartData, 1);
 
@@ -165,9 +180,9 @@ const AdminReport = () => {
       ];
       const csv = rows.map(r => r.join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
       const rangeStr = range === 'monthly' ? `bulanan-${MONTH_NAMES_SHORT[now.getMonth()].toLowerCase()}-${now.getFullYear()}` : `${range}-${now.getFullYear()}`;
       a.download = `revenue-${rangeStr}.csv`;
       a.click();
@@ -233,23 +248,105 @@ const AdminReport = () => {
         <Wallet size={64} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', opacity: 0.08 }} />
       </div>
 
-      {/* ── Stats Grid ─────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }} className="adm-fade2">
-        {[
-          { label: 'Total Orders',  val: totalOrders,       icon: <Package size={16} color="#2563eb" />,    bg: '#eff6ff' },
-          { label: 'Rata-rata',     val: `Rp ${avgOrder.toLocaleString('id-ID')}`, icon: <TrendingUp size={16} color="#15803d" />, bg: '#dcfce7', small: true },
-          { label: 'Selesai',       val: completedCount,    icon: <CheckCircle2 size={16} color="#15803d" />, bg: '#dcfce7' },
-          { label: 'Dibatalkan',    val: cancelledCount,    icon: <XCircle size={16} color="#b91c1c" />,    bg: '#fee2e2' },
-        ].map(s => (
-          <div key={s.label} className="adm-card" style={{ padding: 14 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-              {s.icon}
+      {/* ── Stats + Donut (2-col layout) ─────────────────────────── */}
+      {(() => {
+        const svcTypeMap = {};
+        allServices.forEach(s => {
+          svcTypeMap[String(s.service_id || s.id)] = (s.type || 'lainnya').toLowerCase();
+        });
+
+        const catRevenue = {};
+        revenueOrders.forEach(o => {
+          const svcId = String(o.service_id || '');
+          const cat = svcTypeMap[svcId] || 'lainnya';
+          const label = cat.charAt(0).toUpperCase() + cat.slice(1);
+          catRevenue[label] = (catRevenue[label] || 0) + getPrice(o);
+        });
+
+        const categories = Object.keys(catRevenue);
+        const values = categories.map(c => catRevenue[c]);
+        const total = values.reduce((a, b) => a + b, 0);
+        const COLORS = ['#0EA5E9', '#F59E0B', '#8B5CF6', '#10B981', '#EF4444'];
+
+        let cumulativePercent = 0;
+        const segments = categories.map((cat, i) => {
+          const pct = total > 0 ? values[i] / total : 0;
+          const startAngle = cumulativePercent * 360;
+          const endAngle = (cumulativePercent + pct) * 360;
+          cumulativePercent += pct;
+          return { cat, value: values[i], pct, startAngle, endAngle, color: COLORS[i % COLORS.length] };
+        });
+
+        const describeArc = (cx, cy, r, startAngle, endAngle) => {
+          const rad = (a) => (a - 90) * Math.PI / 180;
+          const x1 = cx + r * Math.cos(rad(startAngle));
+          const y1 = cy + r * Math.sin(rad(startAngle));
+          const x2 = cx + r * Math.cos(rad(endAngle));
+          const y2 = cy + r * Math.sin(rad(endAngle));
+          const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+          return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
+        };
+
+        const avgPerCat = categories.length > 0 ? Math.round(total / categories.length) : 0;
+
+        return (
+          <div className="adm-fade2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+            {/* Left: 3 stacked stat cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                { label: 'Total Orders', val: totalOrders, icon: <Package size={16} color="#2563eb" />, bg: '#eff6ff' },
+                { label: 'Selesai', val: completedCount, icon: <CheckCircle2 size={16} color="#15803d" />, bg: '#dcfce7' },
+                { label: 'Dibatalkan', val: cancelledCount, icon: <XCircle size={16} color="#b91c1c" />, bg: '#fee2e2' },
+              ].map(s => (
+                <div key={s.label} className="adm-card" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 9, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {s.icon}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>{s.label}</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', lineHeight: 1.1 }}>{s.val}</div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, marginBottom: 2 }}>{s.label}</div>
-            <div style={{ fontSize: s.small ? 13 : 22, fontWeight: 900, color: '#0f172a', lineHeight: 1.2 }}>{s.val}</div>
+
+            {/* Right: Donut chart card */}
+            <div className="adm-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+              <div style={{ position: 'relative', width: 100, height: 100, marginBottom: 10 }}>
+                <svg viewBox="0 0 100 100" width="100" height="100">
+                  {total === 0 ? (
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#E5E7EB" strokeWidth="12" />
+                  ) : segments.length === 1 ? (
+                    <circle cx="50" cy="50" r="38" fill="none" stroke={segments[0].color} strokeWidth="12" />
+                  ) : (
+                    segments.map((seg, i) => (
+                      <path key={i} d={describeArc(50, 50, 38, seg.startAngle, seg.endAngle)} fill="none" stroke={seg.color} strokeWidth="12" strokeLinecap="round" />
+                    ))
+                  )}
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>
+                    Rp {avgPerCat >= 1000 ? (avgPerCat / 1000).toFixed(0) + 'K' : avgPerCat.toLocaleString('id-ID')}
+                  </div>
+                  <div style={{ fontSize: 7, color: '#94a3b8', fontWeight: 600 }}>rata-rata</div>
+                </div>
+              </div>
+              {/* Legend */}
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {segments.length === 0 ? (
+                  <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textAlign: 'center' }}>Belum ada data</div>
+                ) : segments.map((seg, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 2, background: seg.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: '#0f172a', flex: 1 }}>{seg.cat}</span>
+                    <span style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>Rp {seg.value.toLocaleString('id-ID')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        ))}
-      </div>
+        );
+      })()}
 
       {/* ── Dynamic Bar Chart ──────────────────────────────────── */}
       <div className="adm-card adm-fade3" style={{ padding: 16, marginBottom: 18 }}>
@@ -258,31 +355,14 @@ const AdminReport = () => {
             <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Grafik Pendapatan</span>
             <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>
               {{
-                daily:   'per hari (Sen–Min)',
-                weekly:  'per minggu (Mgg 1–4)',
+                daily: 'per hari (Sen–Min)',
+                weekly: 'per minggu (Mgg 1–4)',
                 monthly: 'per bulan (Jan–Des)',
-                yearly:  'per tahun (10 thn)'
+                yearly: 'per tahun (10 thn)'
               }[range]}
             </span>
           </div>
           {/* Inline mini filter inside chart card */}
-          <div style={{ display: 'flex', background: '#f8fafc', borderRadius: 10, padding: 3, gap: 2 }}>
-            {RANGE_FILTERS.map(f => (
-              <button
-                key={f.key}
-                onClick={() => setRange(f.key)}
-                style={{
-                  flex: 1, padding: '6px 2px', border: 'none', borderRadius: 7, cursor: 'pointer',
-                  fontSize: '0.7rem', fontWeight: 700, transition: 'all 0.18s ease',
-                  background: range === f.key ? '#064058' : 'transparent',
-                  color: range === f.key ? 'white' : '#94a3b8',
-                  boxShadow: range === f.key ? '0 1px 6px rgba(6,64,88,0.2)' : 'none',
-                }}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
           {/* Date picker: only show for Harian */}
           {range === 'daily' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, padding: '8px 12px', background: '#f0f9ff', borderRadius: 10, border: '1px solid #bae6fd' }}>
@@ -297,7 +377,7 @@ const AdminReport = () => {
                   // ISO week number
                   const startOfYear = new Date(d.getFullYear(), 0, 1);
                   const weekNum = Math.ceil(((d - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
-                  return `${d.getFullYear()}-W${String(weekNum).padStart(2,'0')}`;
+                  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
                 })()}
                 onChange={e => {
                   // Parse YYYY-Www back to Monday date

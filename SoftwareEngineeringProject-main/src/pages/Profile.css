@@ -26,7 +26,7 @@
   right: -50px;
   width: 200px;
   height: 200px;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 50%;
 }
 
@@ -37,7 +37,7 @@
   left: -30px;
   width: 140px;
   height: 140px;
-  background: rgba(255,255,255,0.04);
+  background: rgba(255, 255, 255, 0.04);
   border-radius: 50%;
 }
 
@@ -59,7 +59,7 @@
   width: 88px;
   height: 88px;
   border-radius: 50%;
-  border: 3px solid rgba(255,255,255,0.4);
+  border: 3px solid rgba(255, 255, 255, 0.4);
   padding: 3px;
   cursor: pointer;
   transition: transform 0.2s, border-color 0.2s;
@@ -67,7 +67,7 @@
 
 .profile-avatar-ring:hover {
   transform: scale(1.04);
-  border-color: rgba(255,255,255,0.75);
+  border-color: rgba(255, 255, 255, 0.75);
 }
 
 .profile-avatar-inner {
@@ -100,13 +100,13 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   transition: transform 0.15s, box-shadow 0.15s;
 }
 
 .profile-camera-btn:hover {
   transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .profile-camera-btn:active {
@@ -125,7 +125,7 @@
 
 .profile-hero-email {
   font-size: 13px;
-  color: rgba(255,255,255,0.65);
+  color: rgba(255, 255, 255, 0.65);
   margin: 0 0 16px;
   text-align: center;
 }
@@ -135,9 +135,9 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,255,255,0.25);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   color: white;
   font-size: 11.5px;
   font-weight: 700;
@@ -155,7 +155,7 @@
   padding: 18px 8px;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  box-shadow: 0 6px 24px rgba(6,64,88,0.12);
+  box-shadow: 0 6px 24px rgba(6, 64, 88, 0.12);
   position: relative;
   z-index: 2;
 }
@@ -164,17 +164,22 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 0 8px;
+  gap: 8px;
+  padding: 0 6px;
 }
 
-.profile-stat-item + .profile-stat-item {
+.profile-stat-item+.profile-stat-item {
   border-left: 1px solid #f0f0f0;
 }
 
-.profile-stat-emoji {
-  font-size: 18px;
-  line-height: 1;
+.profile-stat-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0px;
 }
 
 .profile-stat-val {
@@ -200,7 +205,7 @@
   background: white;
   border-radius: 14px;
   padding: 14px 16px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
 }
 
 .profile-completion-header {
@@ -271,7 +276,7 @@
   background: white;
   border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
 }
 
 .profile-section-header {
@@ -357,7 +362,7 @@
 
 .profile-input-wrap:focus-within {
   border-color: #064058;
-  box-shadow: 0 0 0 3px rgba(6,64,88,0.08);
+  box-shadow: 0 0 0 3px rgba(6, 64, 88, 0.08);
   background: white;
 }
 
@@ -398,12 +403,12 @@
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.15s;
   letter-spacing: 0.2px;
-  box-shadow: 0 4px 14px rgba(6,64,88,0.25);
+  box-shadow: 0 4px 14px rgba(6, 64, 88, 0.25);
   margin-top: 4px;
 }
 
 .profile-save-btn:hover {
-  box-shadow: 0 6px 20px rgba(6,64,88,0.3);
+  box-shadow: 0 6px 20px rgba(6, 64, 88, 0.3);
   transform: translateY(-1px);
 }
 
@@ -483,7 +488,7 @@
   justify-content: center;
   cursor: pointer;
   transition: background 0.15s, transform 0.1s;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .addr-icon-btn:hover {
@@ -664,8 +669,11 @@
    ============================================= */
 .addr-modal-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.5);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(3px);
   z-index: 200;
   display: flex;
@@ -685,8 +693,13 @@
 }
 
 @keyframes slideUpSheet {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
 }
 
 .addr-modal-handle {
@@ -735,7 +748,7 @@
 
 .addr-modal-input:focus {
   border-color: #064058;
-  box-shadow: 0 0 0 3px rgba(6,64,88,0.08);
+  box-shadow: 0 0 0 3px rgba(6, 64, 88, 0.08);
   background: white;
 }
 
@@ -756,7 +769,7 @@
 
 .addr-modal-textarea:focus {
   border-color: #064058;
-  box-shadow: 0 0 0 3px rgba(6,64,88,0.08);
+  box-shadow: 0 0 0 3px rgba(6, 64, 88, 0.08);
   background: white;
 }
 
@@ -786,28 +799,68 @@
 .addr-modal-cancel {
   flex: 1;
   height: 50px;
-  background: #f3f4f6;
-  color: #6b7280;
-  border: none;
+  background: white;
+  color: #374151;
+  border: 1.5px solid #e5e7eb;
   border-radius: 14px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.1s;
 }
 
-.addr-modal-cancel:hover {
-  background: #e5e7eb;
+.addr-modal-cancel:active {
+  background: #f3f4f6;
+}
+
+/* =============================================
+   9. CUSTOM BUTTONS & EXTRAS
+   ============================================= */
+.profile-back-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.18);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 3;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.profile-back-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
 }
 
 /* =============================================
    9. ANIMATIONS
    ============================================= */
 @keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.anim-fade { animation: fadeSlideUp 0.4s ease-out both; }
-.anim-fade-2 { animation: fadeSlideUp 0.4s ease-out 0.08s both; }
-.anim-fade-3 { animation: fadeSlideUp 0.4s ease-out 0.16s both; }
+.anim-fade {
+  animation: fadeSlideUp 0.4s ease-out both;
+}
+
+.anim-fade-2 {
+  animation: fadeSlideUp 0.4s ease-out 0.08s both;
+}
+
+.anim-fade-3 {
+  animation: fadeSlideUp 0.4s ease-out 0.16s both;
+}

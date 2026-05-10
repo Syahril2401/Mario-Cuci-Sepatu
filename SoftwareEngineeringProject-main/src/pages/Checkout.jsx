@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import MapPicker from '../components/MapPicker';
+import './Profile.css';
 import { orderService } from '../services/orderService';
 import { promoService } from '../services/promoService';
 import { userService } from '../services/userService';
@@ -23,6 +25,8 @@ const Checkout = () => {
   const today = new Date().toISOString().split("T")[0];
   const [pickupDate, setPickupDate] = useState(today);
   const [deliveryDate, setDeliveryDate] = useState('');
+  const [minDeliveryDate, setMinDeliveryDate] = useState(today);
+  const [remainingQuota, setRemainingQuota] = useState(20);
   const [quotaInfo, setQuotaInfo] = useState({ isFull: false, message: 'Checking availability...' });
   const [promos, setPromos] = useState([]);
   const [activePromo, setActivePromo] = useState(null);
@@ -30,20 +34,28 @@ const Checkout = () => {
   // Find First Available Date on Mount
   useEffect(() => {
     const initQuota = async () => {
-      const statsToday = await orderService.getDailyStats(today);
-      if (statsToday.isFull) {
-        const availableDate = await orderService.findNextAvailableDate(today);
-        setPickupDate(availableDate);
-        setQuotaInfo({
-          isFull: true,
-          message: "Kuota pemesanan hari ini sudah penuh sehingga pemesanan anda dimasukkan ke pesanan besok"
-        });
-      } else {
-        setPickupDate(today);
-        setQuotaInfo({
-          isFull: false,
-          message: "Slot hari ini masih tersedia"
-        });
+      try {
+        const statsToday = await orderService.getDailyStats(today);
+        if (statsToday.isFull) {
+          // If full, we default to the current day but show error, or let user pick another.
+          // Since findNextAvailableDate is missing from orderService, we just inform the user.
+          setPickupDate(today);
+          setRemainingQuota(0);
+          setQuantity(1); // will be validated later
+          setQuotaInfo({
+            isFull: true,
+            message: "Kuota pemesanan hari ini sudah penuh. Silakan pilih tanggal lain."
+          });
+        } else {
+          setPickupDate(today);
+          setRemainingQuota(statsToday.remaining || 20);
+          setQuotaInfo({
+            isFull: false,
+            message: `Sisa slot hari ini: ${statsToday.remaining || 20} pesanan`
+          });
+        }
+      } catch (err) {
+        setRemainingQuota(20);
       }
     };
     initQuota();
@@ -53,24 +65,32 @@ const Checkout = () => {
   const handleDateChange = async (newDate) => {
     if (newDate < today) return;
     
-    const stats = await orderService.getDailyStats(newDate);
-    if (stats.isFull) {
-      const nextDate = await orderService.findNextAvailableDate(newDate);
-      setPickupDate(nextDate);
-      setQuotaInfo({
-        isFull: true,
-        message: `Kuota pemesanan tanggal ${newDate} sudah penuh sehingga pemesanan anda dimasukkan ke tanggal ${nextDate}`
-      });
-      
-      // Temporary toast/alert effect
-      setError(`Kuota ${newDate} penuh. Dialihkan ke ${nextDate}`);
-      setTimeout(() => setError(''), 3000);
-    } else {
+    try {
+      const stats = await orderService.getDailyStats(newDate);
+      if (stats.isFull) {
+        setPickupDate(newDate);
+        setRemainingQuota(0);
+        setQuotaInfo({
+          isFull: true,
+          message: `Kuota pemesanan tanggal ${newDate} sudah penuh.`
+        });
+        
+        setError(`Kuota tanggal ${newDate} penuh. Harap pilih tanggal lain.`);
+        setTimeout(() => setError(''), 3000);
+      } else {
+        setPickupDate(newDate);
+        setRemainingQuota(stats.remaining || 20);
+        setQuotaInfo({
+          isFull: false,
+          message: `Sisa slot tanggal ini: ${stats.remaining || 20} pesanan`
+        });
+        if (quantity > (stats.remaining || 20)) {
+           setQuantity(stats.remaining || 20);
+        }
+      }
+    } catch (err) {
       setPickupDate(newDate);
-      setQuotaInfo({
-        isFull: false,
-        message: "Slot tanggal ini masih tersedia"
-      });
+      setRemainingQuota(20);
     }
   };
 
@@ -89,7 +109,9 @@ const Checkout = () => {
 
       const date = new Date(pickupDate);
       date.setDate(date.getDate() + durationDays);
-      setDeliveryDate(date.toISOString().split("T")[0]);
+      const minDateStr = date.toISOString().split("T")[0];
+      setMinDeliveryDate(minDateStr);
+      setDeliveryDate(minDateStr);
     }
   }, [service, pickupDate]);
   const [paymentMethod, setPaymentMethod] = useState('QRIS');
@@ -100,6 +122,8 @@ const Checkout = () => {
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [addresses, setAddresses] = useState([]);
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [showAddAddressForm, setShowAddAddressForm] = useState(false);
+  const [newAddress, setNewAddress] = useState({ label: '', detail: '', latitude: null, longitude: null });
   const [pickupMethod, setPickupMethod] = useState('Ambil Sendiri');
   const [returnMethod, setReturnMethod] = useState('Ambil Sendiri');
   const [notes, setNotes] = useState('');
@@ -237,6 +261,41 @@ const Checkout = () => {
     return d;
   };
 
+  const handleLocationSelect = (location) => {
+    setNewAddress(a => ({ ...a, latitude: location.latitude, longitude: location.longitude, detail: location.address }));
+  };
+
+  const handleAddAddress = async (e) => {
+    e.preventDefault();
+    if (!newAddress.label || !newAddress.detail) return;
+    
+    let profileData = null;
+    try {
+      const res = await userService.getProfile();
+      profileData = res.data;
+    } catch (err) {
+      console.error("Gagal mendapatkan profil", err);
+      return;
+    }
+    
+    const isFirst = !profileData.addresses || profileData.addresses.length === 0;
+    const addedAddress = { ...newAddress, id: `ADDR-${Date.now()}`, isDefault: isFirst };
+    const updatedAddresses = [...(profileData.addresses || []), addedAddress];
+    
+    const updatedProfile = { ...profileData, addresses: updatedAddresses };
+    
+    try {
+      await userService.updateProfile(updatedProfile);
+      setAddresses(updatedAddresses);
+      setSelectedAddress(addedAddress);
+      setNewAddress({ label: '', detail: '', latitude: null, longitude: null });
+      setShowAddAddressForm(false);
+      setShowAddressModal(false);
+    } catch (error) {
+      console.error("Gagal menambahkan alamat", error);
+    }
+  };
+
   const validateForm = () => {
     if (!selectedAddress) return 'Please add an address in your profile first.';
 
@@ -259,6 +318,8 @@ const Checkout = () => {
     }
 
     if (quantity < 1) return 'Quantity must be at least 1.';
+    if (remainingQuota === 0) return `Maaf, kuota tanggal ${pickupDate} sudah penuh (Max 20 pesanan/hari). Silakan pilih tanggal lain.`;
+    if (quantity > remainingQuota) return `Kuota sisa untuk tanggal ${pickupDate} hanya ${remainingQuota} pesanan. Silakan kurangi jumlah barang.`;
     if (!pickupDate) return 'Please select a pickup date.';
     if (pickupDate < today) return 'Pickup date cannot be in the past.';
     if (!deliveryDate) return 'Please select a delivery date.';
@@ -270,6 +331,15 @@ const Checkout = () => {
     const err = validateForm();
     if (err) {
       setError(err);
+      setTimeout(() => {
+        const errBox = document.getElementById('error-box');
+        if (errBox) {
+          errBox.classList.remove('shake-anim');
+          void errBox.offsetWidth; // trigger reflow
+          errBox.classList.add('shake-anim');
+          errBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
       return;
     }
 
@@ -403,7 +473,8 @@ const Checkout = () => {
           {selectedAddress ? (
             <div style={{ position: 'relative' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                <span style={{ backgroundColor: '#064058', color: 'white', fontSize: '0.6rem', padding: '1px 6px', borderRadius: '3px', fontWeight: 700 }}>{selectedAddress.label.toUpperCase()}</span>
+                <span style={{ color: '#475569', fontSize: '0.75rem', fontWeight: 800 }}>{selectedAddress.label.toUpperCase()}</span>
+                {selectedAddress.isDefault && <span style={{ backgroundColor: '#10B981', color: 'white', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>(DEFAULT)</span>}
               </div>
               <p style={{ fontWeight: 700, color: '#1E293B', margin: '0 0 2px 0', fontSize: '0.9rem' }}>{user.name}</p>
               <p style={{ color: '#64748B', fontSize: '0.8rem', margin: 0, lineHeight: 1.4 }}>{selectedAddress.detail}</p>
@@ -506,7 +577,23 @@ const Checkout = () => {
               </button>
               <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: 800, fontSize: '1rem', color: '#1E293B' }}>{quantity}</span>
               <button
-                onClick={() => setQuantity(quantity + 1)}
+                onClick={() => {
+                  if (quantity < remainingQuota) {
+                     setQuantity(quantity + 1);
+                  } else {
+                     setError(`Sisa kuota harian hanya ${remainingQuota} pesanan.`);
+                     setTimeout(() => {
+                       const errBox = document.getElementById('error-box');
+                       if (errBox) {
+                         errBox.classList.remove('shake-anim');
+                         void errBox.offsetWidth;
+                         errBox.classList.add('shake-anim');
+                         errBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                       }
+                     }, 50);
+                     setTimeout(() => setError(''), 3000);
+                  }
+                }}
                 style={{ width: '32px', height: '32px', borderRadius: '10px', border: '1px solid #E2E8F0', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#064058', fontWeight: 600, fontSize: '18px' }}
               >
                 +
@@ -563,7 +650,7 @@ const Checkout = () => {
                   }}
                   placeholder={returnPlaceholder}
                   value={deliveryDate}
-                  min={pickupDate || today}
+                  min={minDeliveryDate}
                   onChange={e => setDeliveryDate(e.target.value)}
                 />
               </div>
@@ -671,7 +758,7 @@ const Checkout = () => {
       </section>
 
       {error && (
-        <div className="auth-error fade-in" style={{ marginBottom: '16px', borderRadius: '8px' }}>
+        <div id="error-box" className="auth-error fade-in" style={{ marginBottom: '16px', borderRadius: '8px' }}>
           <AlertCircle size={16} />
           <span style={{ fontSize: '0.8rem' }}>{error}</span>
         </div>
@@ -731,8 +818,8 @@ const Checkout = () => {
                 >
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <span style={{ backgroundColor: '#064058', color: 'white', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>{addr.label.toUpperCase()}</span>
-                      {addr.isDefault && <span style={{ fontSize: '0.65rem', color: '#64748B' }}>(Default)</span>}
+                      <span style={{ color: '#475569', fontSize: '0.75rem', fontWeight: 800 }}>{addr.label.toUpperCase()}</span>
+                      {addr.isDefault && <span style={{ backgroundColor: '#10B981', color: 'white', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>(DEFAULT)</span>}
                     </div>
                     <p style={{ color: '#64748B', fontSize: '0.875rem', margin: 0 }}>{addr.detail}</p>
                   </div>
@@ -742,11 +829,59 @@ const Checkout = () => {
             </div>
             <button
               className="btn-primary mt-4"
-              onClick={() => navigate('/profile')}
+              onClick={() => setShowAddAddressForm(true)}
               style={{ borderRadius: '16px' }}
             >
               Add New Address
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Address Modal */}
+      {showAddAddressForm && (
+        <div className="addr-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowAddAddressForm(false); }} style={{zIndex: 3000}}>
+          <div className="addr-modal-sheet">
+            <div className="addr-modal-handle" />
+            <h2 className="addr-modal-title">Tambah Alamat Baru</h2>
+
+            <form onSubmit={handleAddAddress}>
+              <div className="addr-modal-field">
+                <label className="addr-modal-label">Label Alamat</label>
+                <input
+                  type="text"
+                  className="addr-modal-input"
+                  placeholder="Contoh: Rumah, Kantor, Kampus"
+                  value={newAddress.label}
+                  onChange={e => setNewAddress(a => ({ ...a, label: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div className="addr-modal-field">
+                <label className="addr-modal-label">Pilih Lokasi di Peta</label>
+                <MapPicker
+                  onLocationSelect={handleLocationSelect}
+                />
+              </div>
+
+              <div className="addr-modal-field">
+                <label className="addr-modal-label">Detail Alamat Lengkap</label>
+                <textarea
+                  className="addr-modal-textarea"
+                  rows="3"
+                  placeholder="Pilih di peta atau ketik manual..."
+                  value={newAddress.detail}
+                  onChange={e => setNewAddress(a => ({ ...a, detail: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div className="addr-modal-actions">
+                <button type="submit" className="addr-modal-submit">Simpan Alamat</button>
+                <button type="button" className="addr-modal-cancel" onClick={() => setShowAddAddressForm(false)}>Batal</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -797,6 +932,15 @@ const Checkout = () => {
       <style>{`
         .selectable-card:active {
           transform: scale(0.96);
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          50% { transform: translateX(5px); }
+          75% { transform: translateX(-5px); }
+        }
+        .shake-anim {
+          animation: shake 0.3s ease-in-out;
         }
         .btn-primary:active {
           transform: scale(0.96);

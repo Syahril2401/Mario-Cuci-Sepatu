@@ -9,5 +9,6 @@ router.get('/stats', orderController.getDailyStats);
 router.get('/:id', verifyToken, orderController.getOrderById);
 router.post('/', verifyToken, orderController.createOrder);
 router.put('/:id', verifyToken, verifyAdmin, orderController.updateOrder);
+router.delete('/:id', verifyToken, orderController.deleteOrder);
 
 module.exports = router;

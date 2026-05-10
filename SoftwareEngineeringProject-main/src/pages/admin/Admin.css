@@ -363,6 +363,7 @@
 }
 .adm-promo-card.active::before { background: #16a34a; }
 .adm-promo-card.inactive::before { background: #9ca3af; }
+.adm-promo-card.inactive { opacity: 0.6; }
 .adm-promo-card.expired::before { background: #ef4444; }
 
 /* ── Report Stat Card ──────────────────────── */

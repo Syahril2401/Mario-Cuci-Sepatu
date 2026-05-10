@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Menu, X, Clock, ShieldCheck, Phone, Mail, MapPin,
-  Sparkles, Truck, Timer, Camera, 
-  Zap, ChevronLeft, ChevronRight, Navigation,
+  Sparkles, Truck, Timer, Camera,
+  Zap, ChevronLeft, ChevronRight, ChevronUp, Navigation,
   Home, SportShoe, Info, Tag, LogIn, UserPlus, LayoutDashboard
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
@@ -134,13 +134,13 @@ const HeroCarousel = () => {
 const LandingNavbar = ({ onMenuOpen, scrolled }) => {
   return (
     <nav className={`landing-navbar ${scrolled ? 'scrolled' : ''}`}>
+      <button className="landing-hamburger" onClick={onMenuOpen} aria-label="Open menu">
+        <Menu size={24} />
+      </button>
       <div className="landing-logo">
         <img src={logo} alt="Mario Cuci Sepatu" />
         <span className="landing-brand-name">Mario Cuci Sepatu</span>
       </div>
-      <button className="landing-hamburger" onClick={onMenuOpen} aria-label="Open menu">
-        <Menu size={24} />
-      </button>
     </nav>
   );
 };
@@ -157,9 +157,9 @@ const MobileDrawer = ({ isOpen, onClose, isAuthenticated, onNavigate }) => {
   const authItems = isAuthenticated
     ? [{ icon: <LayoutDashboard size={20} />, label: 'Dashboard', id: '/home', action: 'route' }]
     : [
-        { icon: <LogIn size={20} />, label: 'Login', id: '/login', action: 'route', highlight: false },
-        { icon: <UserPlus size={20} />, label: 'Daftar', id: '/register', action: 'route', highlight: true },
-      ];
+      { icon: <LogIn size={20} />, label: 'Login', id: '/login', action: 'route', highlight: false },
+      { icon: <UserPlus size={20} />, label: 'Daftar', id: '/register', action: 'route', highlight: true },
+    ];
 
   return (
     <>
@@ -227,6 +227,7 @@ const Landing = () => {
   const [scrolled, setScrolled] = useState(false);
   const [services, setServices] = useState([]);
   const [promos, setPromos] = useState([]);
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
@@ -251,7 +252,22 @@ const Landing = () => {
   };
 
   const handleScroll = (e) => {
-    setScrolled(e.target.scrollTop > 10);
+    const scrollTop = e.target.scrollTop;
+    setScrolled(scrollTop > 10);
+    
+    const aboutSection = document.getElementById('about');
+    if (aboutSection && scrollTop > aboutSection.offsetTop - 200) {
+      setShowBackToTop(true);
+    } else {
+      setShowBackToTop(false);
+    }
+  };
+
+  const scrollToTop = () => {
+    const container = document.querySelector('.app-content');
+    if (container) {
+      container.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handleWhatsAppClick = () => {
@@ -334,7 +350,7 @@ const Landing = () => {
             {services.slice(0, 3).map((service, index) => {
               const activePromo = promoService.getActivePromoForService(service, promos);
               const discountedPrice = promoService.calculateDiscountedPrice(service.price, activePromo);
-              
+
               return (
                 <div key={service.service_id} className="service-card-premium premium-card" onClick={() => navigate('/login')}>
                   <div className="card-img-wrapper">
@@ -414,7 +430,7 @@ const Landing = () => {
               <div>
                 <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 900, color: 'var(--primary)' }}>Mario Cuci Sepatu</h4>
                 <p style={{ margin: 0, color: 'var(--text-gray)', fontSize: '0.85rem', lineHeight: '1.5' }}>
-                  Northwest Lake, Babat Jerawat,<br />
+                  Northwest Lake NG18-31, Babat Jerawat,<br />
                   Kec. Pakal, Surabaya, Jawa Timur
                 </p>
               </div>
@@ -453,7 +469,7 @@ const Landing = () => {
             <div className="footer-contact-list">
               <div className="contact-row">
                 <MapPin size={18} className="contact-icon" />
-                <span>Northwest Lake, Babat Jerawat, Surabaya</span>
+                <span>Northwest Lake NG18-31, Babat Jerawat, Surabaya</span>
               </div>
               <div className="contact-row">
                 <Clock size={18} className="contact-icon" />
@@ -477,13 +493,6 @@ const Landing = () => {
             </div>
 
             <div className="footer-divider"></div>
-
-            <div className="footer-bottom">
-              <p className="copyright-text">
-                © {new Date().getFullYear()} Mario Cuci Sepatu
-              </p>
-              <p className="made-with">Made with ❤️ in Surabaya</p>
-            </div>
           </div>
         </footer>
       </div>
@@ -491,6 +500,12 @@ const Landing = () => {
       <div className="wa-floating" onClick={handleWhatsAppClick}>
         <WhatsappIcon size={30} color="white" />
       </div>
+
+      {showBackToTop && (
+        <button className="back-to-top-btn" onClick={scrollToTop}>
+          <ChevronUp size={24} />
+        </button>
+      )}
     </>
   );
 };

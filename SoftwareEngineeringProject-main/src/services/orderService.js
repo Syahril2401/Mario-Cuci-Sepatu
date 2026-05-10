@@ -28,7 +28,7 @@ export const STATUS_LABELS = {
 
   // --- Legacy compatibility ---
   "ANTRI":    "Menunggu Pengantaran Barang",
-  "PENDING":  "Menunggu Verifikasi Pembayaran",
+  "PENDING":  "Belum Bayar",
   "READY":    "Siap",
   "DELIVERED": "Sudah Diterima",
 };
@@ -141,8 +141,10 @@ export const canUpdateStatus = (order, nextStatus) => {
 
 export const getStatusColor = (status) => {
   switch (status?.toUpperCase()) {
-    case 'MENUNGGU_VERIFIKASI':
     case 'PENDING':
+      return { bg: '#F1F5F9', text: '#475569', border: '#E2E8F0' }; // Slate
+
+    case 'MENUNGGU_VERIFIKASI':
       return { bg: '#FFF7ED', text: '#EA580C', border: '#FFEDD5' }; // Orange
 
     case 'MENUNGGU_PENGANTARAN':
@@ -228,7 +230,7 @@ export const orderService = {
   },
   updateOrder: async (updatedOrder) => {
     try {
-      const response = await api.put(`/orders/${updatedOrder.order_id}`, { status: updatedOrder.status });
+      const response = await api.put(`/orders/${updatedOrder.order_id}`, updatedOrder);
       return response.data;
     } catch (error) {
       throw error;
@@ -245,6 +247,14 @@ export const orderService = {
   createOrder: async (orderData) => {
     try {
       const response = await api.post('/orders', orderData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  deleteOrder: async (order_id) => {
+    try {
+      const response = await api.delete(`/orders/${order_id}`);
       return response.data;
     } catch (error) {
       throw error;

@@ -72,6 +72,43 @@ const Order = {
     );
     return result;
   },
+  update: async (id, data) => {
+    const fields = [];
+    const values = [];
+
+    if (data.status) {
+      fields.push('status = ?');
+      values.push(data.status);
+    }
+
+    if (data.payment_method || (data.payment && data.payment.method)) {
+      fields.push('payment_method = ?');
+      values.push(data.payment_method || data.payment.method);
+    }
+
+    if (data.payment_status || (data.payment && data.payment.status)) {
+      fields.push('payment_status = ?');
+      values.push(data.payment_status || data.payment.status);
+    }
+    
+    // Support photo fields if they exist in DB
+    const possiblePhotos = ['pickup_photo', 'received_photo', 'delivery_photo', 'proof_image', 'notes'];
+    possiblePhotos.forEach(field => {
+      if (data[field] !== undefined) {
+        fields.push(`${field} = ?`);
+        values.push(data[field]);
+      }
+    });
+
+    if (fields.length === 0) return null;
+
+    values.push(id);
+    const [result] = await db.execute(
+      `UPDATE orders SET ${fields.join(', ')} WHERE order_id = ?`,
+      values
+    );
+    return result;
+  },
   updateStatus: async (id, status) => {
     const [result] = await db.execute('UPDATE orders SET status=? WHERE order_id=?', [status, id]);
     return result;

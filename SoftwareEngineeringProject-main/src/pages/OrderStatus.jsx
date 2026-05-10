@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   orderService, getStatusFlow, getStatusColor,
   STATUS_LABELS, STATUS_DESCRIPTIONS
@@ -7,13 +7,13 @@ import {
 import {
   Package, Clock, ChevronDown, Truck, UserCheck,
   CheckCircle, Check, MapPin, Camera, X,
-  ArrowLeft, ShoppingBag, Navigation
+  ArrowLeft, ShoppingCart, Navigation, AlertCircle
 } from 'lucide-react';
 import './Pages.css';
 
 // ─── Helpers ────────────────────────────────────────────────
-const pickupMethodLabel  = (m) => m === 'SELF_DROP' ? '🚶 Diantar Sendiri' : '🏍 Dijemput Admin';
-const returnMethodLabel  = (m) => m === 'SELF_PICKUP' ? '🏪 Ambil di Toko' : '🚚 Diantar ke Rumah';
+const pickupMethodLabel = (m) => m === 'SELF_DROP' ? '🚶 Diantar Sendiri' : '🏍 Dijemput Admin';
+const returnMethodLabel = (m) => m === 'SELF_PICKUP' ? '🏪 Ambil di Toko' : '🚚 Diantar ke Rumah';
 
 const fmtTime = (iso) => iso
   ? new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
@@ -32,9 +32,9 @@ const StatusTimeline = ({ currentStatus, history, orderFlow, onImageClick }) => 
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {steps.map((step, idx) => {
         const isCompleted = idx < currentIdx;
-        const isCurrent   = idx === currentIdx;
-        const isLast      = idx === steps.length - 1;
-        const histItem    = history?.find(h => h.status === step);
+        const isCurrent = idx === currentIdx;
+        const isLast = idx === steps.length - 1;
+        const histItem = history?.find(h => h.status === step);
 
         return (
           <div key={step} style={{ display: 'flex', gap: 12, minHeight: 48 }}>
@@ -92,18 +92,19 @@ const StatusTimeline = ({ currentStatus, history, orderFlow, onImageClick }) => 
               )}
               {histItem && histItem.proof_image && (
                 <div style={{ marginTop: 8 }}>
-                  <img 
-                    src={histItem.proof_image} 
-                    alt="Proof" 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       if (onImageClick) onImageClick(histItem.proof_image);
                     }}
-                    style={{ 
-                      height: 80, width: 80, objectFit: 'cover', borderRadius: 8, 
-                      cursor: 'pointer', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                    }} 
-                  />
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      background: 'rgba(6,64,88,0.06)', border: '1px solid rgba(6,64,88,0.15)', color: '#064058',
+                      padding: '4px 10px', borderRadius: 14, fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                    }}
+                  >
+                    <Camera size={12} /> Lihat Foto Bukti
+                  </button>
                 </div>
               )}
             </div>
@@ -117,7 +118,7 @@ const StatusTimeline = ({ currentStatus, history, orderFlow, onImageClick }) => 
 // ─── Detail Bottom Sheet ─────────────────────────────────────
 const DetailSheet = ({ order, onClose, onImageClick }) => {
   const colors = getStatusColor(order.status);
-  const flow   = getStatusFlow(order);
+  const flow = getStatusFlow(order);
 
   return (
     <div
@@ -226,7 +227,7 @@ const DetailSheet = ({ order, onClose, onImageClick }) => {
               </h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
-                  { photo: order.pickup_photo,   time: order.pickup_photo_time,   label: '📸 Bukti Penjemputan' },
+                  { photo: order.pickup_photo, time: order.pickup_photo_time, label: '📸 Bukti Penjemputan' },
                   { photo: order.received_photo, time: order.received_photo_time, label: '📸 Diterima di Toko' },
                   { photo: order.delivery_photo, time: order.delivery_photo_time, label: '📸 Bukti Pengantaran' },
                 ].filter(p => p.photo).map((p, i) => (
@@ -237,7 +238,7 @@ const DetailSheet = ({ order, onClose, onImageClick }) => {
                     </div>
                     <img
                       src={p.photo} alt={p.label}
-                      onClick={() => { if(onImageClick) onImageClick(p.photo); }}
+                      onClick={() => { if (onImageClick) onImageClick(p.photo); }}
                       style={{ width: '100%', borderRadius: 10, height: 160, objectFit: 'cover', cursor: 'pointer' }}
                     />
                   </div>
@@ -281,18 +282,21 @@ const DetailSheet = ({ order, onClose, onImageClick }) => {
 
 // ─── Main Component ──────────────────────────────────────────
 const OrderStatus = () => {
-  const [activeOrders, setActiveOrders]   = useState([]);
-  const [expandedId, setExpandedId]       = useState(null);
+  const [activeOrders, setActiveOrders] = useState([]);
+  const [expandedId, setExpandedId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [filterTab, setFilterTab]         = useState('Semua');
-  const [isUpdating, setIsUpdating]       = useState(false);
-  const [lightboxImage, setLightboxImage] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [filterTab, setFilterTab] = useState(location.state?.tab || 'Semua');
+
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState(null);
 
   useEffect(() => { fetchOrders(); }, []);
 
   const fetchOrders = () => {
-    orderService.getActiveStatus().then(res => setActiveOrders(res.data));
+    orderService.getHistory().then(res => setActiveOrders(res.data));
   };
 
   const handleConfirmReceived = async (order, e) => {
@@ -309,19 +313,71 @@ const OrderStatus = () => {
     }
   };
 
-  const TAB_FILTERS = {
-    'Semua':    () => true,
-    'Pending':  o => o.status === 'PENDING' || o.status === 'MENUNGGU_VERIFIKASI',
-    'Proses':   o => ['PROCESSING','ANTRI','WAITING_PICKUP','BARANG_DIAMBIL','MENUNGGU_PENGANTARAN','BARANG_DITERIMA'].includes(o.status),
-    'Selesai':  o => ['RECEIVED','READY_DELIVERY','READY_PICKUP','ON_DELIVERY','SUDAH_DIAMBIL'].includes(o.status),
+  const confirmCancelOrder = async () => {
+    if (!showCancelModal) return;
+    setIsUpdating(true);
+    try {
+      await orderService.deleteOrder(showCancelModal);
+      fetchOrders();
+    } catch (err) {
+      alert('Gagal membatalkan pesanan');
+    } finally {
+      setIsUpdating(false);
+      setShowCancelModal(null);
+    }
   };
 
-  const filteredOrders = activeOrders.filter(TAB_FILTERS[filterTab] || (() => true));
+  const TAB_FILTERS = {
+    'Semua': () => true,
+    'Pending': o => o.status === 'PENDING' || o.status === 'MENUNGGU_VERIFIKASI',
+    'Proses': o => ['PROCESSING', 'ANTRI', 'WAITING_PICKUP', 'BARANG_DIAMBIL', 'MENUNGGU_PENGANTARAN', 'BARANG_DITERIMA'].includes(o.status),
+    'Selesai': o => ['RECEIVED', 'READY_DELIVERY', 'READY_PICKUP', 'ON_DELIVERY', 'SUDAH_DIAMBIL', 'FINISHED', 'COMPLETED'].includes(o.status),
+  };
+
+  const STATUS_PRIORITY = {
+    'PENDING': 1,
+    'MENUNGGU_VERIFIKASI': 2,
+    
+    'WAITING_PICKUP': 3,
+    'BARANG_DIAMBIL': 4,
+    'ANTRI': 5,
+    'PROCESSING': 6,
+    'BARANG_DITERIMA': 7,
+    'MENUNGGU_PENGANTARAN': 8,
+
+    'READY_PICKUP': 9,
+    'READY_DELIVERY': 10,
+    'ON_DELIVERY': 11,
+    'SUDAH_DIAMBIL': 12,
+    'RECEIVED': 13,
+    'FINISHED': 14,
+    'COMPLETED': 15,
+    
+    'CANCELLED': 99
+  };
+
+  const filteredOrders = activeOrders.filter(TAB_FILTERS[filterTab] || (() => true)).sort((a, b) => {
+    const priorityA = STATUS_PRIORITY[a.status] || 50;
+    const priorityB = STATUS_PRIORITY[b.status] || 50;
+    
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    
+    // Sort by order_id descending if priority is the same
+    return b.order_id - a.order_id;
+  });
 
   return (
     <>
-      {/* Inject slideUpSheet keyframe */}
-      <style>{`@keyframes slideUpSheet{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+      {/* Inject slideUpSheet keyframe and hover effects */}
+      <style>{`
+        @keyframes slideUpSheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        .cancel-order-btn:hover { background: #FEE2E2 !important; transform: scale(0.98); }
+        .cancel-modal-btn-no:hover { background: #E5E7EB !important; transform: scale(0.96); }
+        .cancel-modal-btn-yes:hover { background: #DC2626 !important; transform: scale(0.96); }
+      `}</style>
 
       <div className="page-container" style={{ maxWidth: 480, margin: '0 auto', padding: '0 16px 80px', backgroundColor: '#f4f7fb', minHeight: '100vh' }}>
 
@@ -334,11 +390,6 @@ const OrderStatus = () => {
             <ArrowLeft size={18} color="#064058" />
           </button>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#064058', flex: 1 }}>Status Pesanan</h2>
-          {activeOrders.length > 0 && (
-            <span style={{ fontSize: 11, fontWeight: 700, background: '#064058', color: 'white', padding: '4px 10px', borderRadius: 20 }}>
-              {activeOrders.length} Aktif
-            </span>
-          )}
         </div>
 
         {/* ── Filter Tabs ── */}
@@ -367,17 +418,17 @@ const OrderStatus = () => {
             <p style={{ margin: 0, fontWeight: 700, color: '#374151', fontSize: 15 }}>Tidak ada pesanan</p>
             <p style={{ margin: 0, color: '#9ca3af', fontSize: 13, textAlign: 'center' }}>Belum ada pesanan aktif untuk tab ini.</p>
             <button onClick={() => navigate('/checkout')} style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, background: '#064058', color: 'white', border: 'none', borderRadius: 12, padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-              <ShoppingBag size={15} /> Order Sekarang
+              <ShoppingCart size={15} /> Order Sekarang
             </button>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {filteredOrders.map(order => {
               const isExpanded = expandedId === order.order_id;
-              const colors     = getStatusColor(order.status);
-              const flow       = getStatusFlow(order);
+              const colors = getStatusColor(order.status);
+              const flow = getStatusFlow(order);
               const currentIdx = flow.indexOf((order.status || '').toUpperCase());
-              const progress   = flow.length > 1 ? Math.round((currentIdx / (flow.length - 1)) * 100) : 0;
+              const progress = flow.length > 1 ? Math.round((currentIdx / (flow.length - 1)) * 100) : 0;
 
               return (
                 <div key={order.order_id}
@@ -450,12 +501,21 @@ const OrderStatus = () => {
                       </button>
 
                       {(order.status === 'PENDING' || order.status === 'MENUNGGU_VERIFIKASI') && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/payment/${order.order_id}`); }}
-                          style={{ width: '100%', marginTop: 8, padding: 12, borderRadius: 12, background: '#064058', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-                        >
-                          Bayar Sekarang
-                        </button>
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); navigate(`/payment/${order.order_id}`); }}
+                            style={{ width: '100%', marginTop: 8, padding: 12, borderRadius: 12, background: '#064058', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            Bayar Sekarang
+                          </button>
+                          <button
+                            className="cancel-order-btn"
+                            onClick={(e) => { e.stopPropagation(); setShowCancelModal(order.order_id); }}
+                            style={{ width: '100%', marginTop: 8, padding: 12, borderRadius: 12, background: '#FEF2F2', color: '#EF4444', border: '1px solid #FEE2E2', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+                          >
+                            Batalkan Pesanan
+                          </button>
+                        </>
                       )}
                     </div>
                   )}
@@ -473,7 +533,7 @@ const OrderStatus = () => {
 
       {/* Lightbox Modal */}
       {lightboxImage && (
-        <div 
+        <div
           onClick={() => setLightboxImage(null)}
           style={{
             position: 'fixed', inset: 0, zIndex: 1000,
@@ -482,18 +542,66 @@ const OrderStatus = () => {
             padding: 20, animation: 'fadeIn 0.2s ease-out'
           }}
         >
-          <button 
+          <button
             onClick={() => setLightboxImage(null)}
             style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
           >
             <X size={24} />
           </button>
-          <img 
-            src={lightboxImage} 
-            alt="Fullscreen Proof" 
-            style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: 12 }} 
+          <img
+            src={lightboxImage}
+            alt="Fullscreen Proof"
+            style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: 12 }}
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelModal && (
+        <div
+          onClick={() => setShowCancelModal(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 3000,
+            background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20, animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white', borderRadius: 24, padding: 24,
+              width: '100%', maxWidth: 320, textAlign: 'center',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+              animation: 'slideUpSheet 0.3s cubic-bezier(0.32,0.72,0,1)'
+            }}
+          >
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <AlertCircle size={32} color="#EF4444" />
+            </div>
+            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 800, color: '#111827' }}>Batalkan Pesanan?</h3>
+            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6B7280', lineHeight: 1.5 }}>
+              Pesanan yang sudah dibatalkan tidak dapat dikembalikan lagi. Anda yakin ingin melanjutkan?
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                className="cancel-modal-btn-yes"
+                onClick={confirmCancelOrder}
+                disabled={isUpdating}
+                style={{ flex: 1, padding: 12, borderRadius: 12, background: '#EF4444', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', opacity: isUpdating ? 0.7 : 1 }}
+              >
+                {isUpdating ? 'Memproses...' : 'Ya, Batalkan'}
+              </button>
+              <button
+                className="cancel-modal-btn-no"
+                onClick={() => setShowCancelModal(null)}
+                style={{ flex: 1, padding: 12, borderRadius: 12, background: '#F3F4F6', color: '#374151', border: 'none', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                Tidak
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>

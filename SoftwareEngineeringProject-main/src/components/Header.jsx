@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { User, Settings, LogOut, ChevronDown, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import { userService } from '../services/userService';
@@ -38,8 +38,11 @@ const Header = ({ toggleDrawer }) => {
     navigate('/profile');
   };
 
-  const handleLogout = () => {
-    setDropdownOpen(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const firstName = user?.name?.split(' ')[0] || 'Pengguna';
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutConfirm(false);
     logout();
     navigate('/');
   };
@@ -51,9 +54,20 @@ const Header = ({ toggleDrawer }) => {
           className="menu-btn" 
           onClick={toggleDrawer} 
           aria-label="Open Menu" 
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}
+          style={{ 
+            background: 'none',
+            border: 'none', 
+            borderRadius: '12px',
+            cursor: 'pointer', 
+            width: '40px',
+            height: '40px',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            color: '#064058'
+          }}
         >
-          <img src={logo} alt="Mario Cuci Sepatu" style={{ height: '40px', objectFit: 'contain' }} />
+          <Menu size={24} />
         </button>
       </div>
       
@@ -95,13 +109,42 @@ const Header = ({ toggleDrawer }) => {
               <Settings size={16} />
               <span>Settings</span>
             </button>
-            <button className="dropdown-item logout" onClick={handleLogout}>
+            <button className="dropdown-item logout" onClick={() => { setDropdownOpen(false); setShowLogoutConfirm(true); }}>
               <LogOut size={16} />
               <span>Logout</span>
             </button>
           </div>
         )}
       </div>
+
+      {/* ══════════════════════════════════
+          LOGOUT CONFIRM MODAL
+      ══════════════════════════════════ */}
+      {showLogoutConfirm && (
+        <div
+          className="logout-confirm-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowLogoutConfirm(false); }}
+        >
+          <div className="logout-confirm-card">
+            <div className="logout-confirm-icon">
+              <LogOut size={32} color="#ef4444" />
+            </div>
+            <div className="logout-confirm-title">Keluar dari Akun?</div>
+            <p className="logout-confirm-sub">
+              Kamu akan logout dari akun <strong>{firstName}</strong>.
+              Pastikan sudah menyimpan semua yang diperlukan.
+            </p>
+            <div className="logout-confirm-actions">
+              <button className="logout-confirm-yes" onClick={handleLogoutConfirm}>
+                Ya, Keluar
+              </button>
+              <button className="logout-confirm-no" onClick={() => setShowLogoutConfirm(false)}>
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
