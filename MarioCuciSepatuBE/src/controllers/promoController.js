@@ -22,7 +22,7 @@ exports.getPromoById = async (req, res) => {
 exports.createPromo = async (req, res) => {
   try {
     const result = await Promo.create(req.body);
-    res.status(201).json({ message: 'Promo created', data: { id: result.insertId, ...req.body } });
+    res.status(201).json({ message: 'Promo created', data: { promo_id: result.insertId, ...req.body } });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -31,7 +31,7 @@ exports.createPromo = async (req, res) => {
 exports.updatePromo = async (req, res) => {
   try {
     await Promo.update(req.params.id, req.body);
-    res.json({ message: 'Promo updated', data: { id: req.params.id, ...req.body } });
+    res.json({ message: 'Promo updated', data: { promo_id: req.params.id, ...req.body } });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

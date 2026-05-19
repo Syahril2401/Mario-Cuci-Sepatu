@@ -119,9 +119,9 @@ exports.createOrder = async (req, res) => {
       notes: orderData.notes || '',
       quantity: orderData.quantity || 1,
       photos: orderData.photos ? JSON.stringify(orderData.photos) : '[]',
-      originalPrice: orderData.originalPrice || 0,
-      discountAmount: orderData.discountAmount || 0,
-      promoName: orderData.promoName || null
+      originalPrice: orderData.originalPrice || null,
+      discountAmount: orderData.discountAmount || null,
+      promo_id: orderData.promo_id || null
     };
 
     const result = await Order.create(newOrder);

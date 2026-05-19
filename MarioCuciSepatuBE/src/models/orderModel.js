@@ -3,49 +3,64 @@ const db = require('../config/db');
 const Order = {
   getAll: async () => {
     const [rows] = await db.execute(`
-      SELECT o.*, u.name as customerName, u.phone as customerPhone, u.profileImage, s.serviceName as service 
+      SELECT o.*, u.name as customerName, u.phone as customerPhone, u.profileImage, 
+             s.serviceName as service,
+             p.promoCode, p.promoName, p.percentage as promoPercentage
       FROM orders o 
       LEFT JOIN users u ON o.user_id = u.user_id 
       LEFT JOIN services s ON o.service_id = s.service_id
+      LEFT JOIN promos p ON o.promo_id = p.promo_id
     `);
     return rows;
   },
   getByUserId: async (userId) => {
     const [rows] = await db.execute(`
-      SELECT o.*, u.name as customerName, u.phone as customerPhone, u.profileImage, s.serviceName as service 
+      SELECT o.*, u.name as customerName, u.phone as customerPhone, u.profileImage, 
+             s.serviceName as service,
+             p.promoCode, p.promoName, p.percentage as promoPercentage
       FROM orders o 
       LEFT JOIN users u ON o.user_id = u.user_id 
-      LEFT JOIN services s ON o.service_id = s.service_id 
+      LEFT JOIN services s ON o.service_id = s.service_id
+      LEFT JOIN promos p ON o.promo_id = p.promo_id
       WHERE o.user_id = ?
     `, [userId]);
     return rows;
   },
   getActive: async () => {
     const [rows] = await db.execute(`
-      SELECT o.*, u.name as customerName, u.phone as customerPhone, u.profileImage, s.serviceName as service 
+      SELECT o.*, u.name as customerName, u.phone as customerPhone, u.profileImage, 
+             s.serviceName as service,
+             p.promoCode, p.promoName, p.percentage as promoPercentage
       FROM orders o 
       LEFT JOIN users u ON o.user_id = u.user_id 
-      LEFT JOIN services s ON o.service_id = s.service_id 
+      LEFT JOIN services s ON o.service_id = s.service_id
+      LEFT JOIN promos p ON o.promo_id = p.promo_id
       WHERE o.status NOT IN ("FINISHED", "CANCELLED")
     `);
     return rows;
   },
   getActiveByUserId: async (userId) => {
     const [rows] = await db.execute(`
-      SELECT o.*, u.name as customerName, u.phone as customerPhone, u.profileImage, s.serviceName as service 
+      SELECT o.*, u.name as customerName, u.phone as customerPhone, u.profileImage, 
+             s.serviceName as service,
+             p.promoCode, p.promoName, p.percentage as promoPercentage
       FROM orders o 
       LEFT JOIN users u ON o.user_id = u.user_id 
-      LEFT JOIN services s ON o.service_id = s.service_id 
+      LEFT JOIN services s ON o.service_id = s.service_id
+      LEFT JOIN promos p ON o.promo_id = p.promo_id
       WHERE o.status NOT IN ("FINISHED", "CANCELLED") AND o.user_id = ?
     `, [userId]);
     return rows;
   },
   getById: async (id) => {
     const [rows] = await db.execute(`
-      SELECT o.*, u.name as customerName, u.phone as customerPhone, u.profileImage, s.serviceName as service 
+      SELECT o.*, u.name as customerName, u.phone as customerPhone, u.profileImage, 
+             s.serviceName as service,
+             p.promoCode, p.promoName, p.percentage as promoPercentage
       FROM orders o 
       LEFT JOIN users u ON o.user_id = u.user_id 
-      LEFT JOIN services s ON o.service_id = s.service_id 
+      LEFT JOIN services s ON o.service_id = s.service_id
+      LEFT JOIN promos p ON o.promo_id = p.promo_id
       WHERE o.order_id = ?
     `, [id]);
     return rows[0];
@@ -55,11 +70,11 @@ const Order = {
     return rows[0].count;
   },
   create: async (data) => {
-    const { order_id, user_id, service_id, pickup_date, delivery_date, status, pickupMethod, returnMethod, address, total_price, is_overflow_order, auto_shifted, payment_method, payment_status, notes, quantity, photos, originalPrice, discountAmount, promoName } = data;
+    const { order_id, user_id, service_id, pickup_date, delivery_date, status, pickupMethod, returnMethod, address, total_price, is_overflow_order, auto_shifted, payment_method, payment_status, notes, quantity, photos, originalPrice, discountAmount, promo_id } = data;
     const [result] = await db.execute(
-      `INSERT INTO orders (order_id, user_id, service_id, pickup_date, delivery_date, status, pickupMethod, returnMethod, address, total_price, is_overflow_order, auto_shifted, payment_method, payment_status, notes, quantity, photos, originalPrice, discountAmount, promoName) 
+      `INSERT INTO orders (order_id, user_id, service_id, pickup_date, delivery_date, status, pickupMethod, returnMethod, address, total_price, is_overflow_order, auto_shifted, payment_method, payment_status, notes, quantity, photos, originalPrice, discountAmount, promo_id) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [order_id, user_id, service_id, pickup_date, delivery_date || null, status || 'PENDING', pickupMethod, returnMethod, address, total_price, is_overflow_order || false, auto_shifted || false, payment_method || null, payment_status || 'PENDING', notes, quantity, photos, originalPrice, discountAmount, promoName]
+      [order_id, user_id, service_id, pickup_date, delivery_date || null, status || 'PENDING', pickupMethod, returnMethod, address, total_price, is_overflow_order || false, auto_shifted || false, payment_method || null, payment_status || 'PENDING', notes, quantity, photos, originalPrice || null, discountAmount || null, promo_id || null]
     );
     return result;
   },
@@ -89,6 +104,22 @@ const Order = {
     if (data.payment_status || (data.payment && data.payment.status)) {
       fields.push('payment_status = ?');
       values.push(data.payment_status || data.payment.status);
+    }
+
+    // Support promo_id update (bisa di-set NULL jika promo dihapus)
+    if (data.promo_id !== undefined) {
+      fields.push('promo_id = ?');
+      values.push(data.promo_id || null);
+    }
+
+    if (data.discountAmount !== undefined) {
+      fields.push('discountAmount = ?');
+      values.push(data.discountAmount || null);
+    }
+
+    if (data.originalPrice !== undefined) {
+      fields.push('originalPrice = ?');
+      values.push(data.originalPrice || null);
     }
     
     // Support photo fields if they exist in DB
