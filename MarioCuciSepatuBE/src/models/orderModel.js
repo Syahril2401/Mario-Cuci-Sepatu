@@ -10,8 +10,10 @@ const Order = {
              pa1.photoAdmin as pickup_photo,
              pa2.photoAdmin as received_photo,
              pa3.photoAdmin as delivery_photo,
-             pa4.photoAdmin as proof_image
+             pa4.photoAdmin as proof_image,
+             os.status_code as status
       FROM orders o 
+      LEFT JOIN order_statuses os ON o.status_id = os.status_id
       LEFT JOIN users u ON o.user_id = u.user_id 
       LEFT JOIN services s ON o.service_id = s.service_id
       LEFT JOIN promos p ON o.promo_id = p.promo_id
@@ -32,8 +34,10 @@ const Order = {
              pa1.photoAdmin as pickup_photo,
              pa2.photoAdmin as received_photo,
              pa3.photoAdmin as delivery_photo,
-             pa4.photoAdmin as proof_image
+             pa4.photoAdmin as proof_image,
+             os.status_code as status
       FROM orders o 
+      LEFT JOIN order_statuses os ON o.status_id = os.status_id
       LEFT JOIN users u ON o.user_id = u.user_id 
       LEFT JOIN services s ON o.service_id = s.service_id
       LEFT JOIN promos p ON o.promo_id = p.promo_id
@@ -55,8 +59,10 @@ const Order = {
              pa1.photoAdmin as pickup_photo,
              pa2.photoAdmin as received_photo,
              pa3.photoAdmin as delivery_photo,
-             pa4.photoAdmin as proof_image
+             pa4.photoAdmin as proof_image,
+             os.status_code as status
       FROM orders o 
+      LEFT JOIN order_statuses os ON o.status_id = os.status_id
       LEFT JOIN users u ON o.user_id = u.user_id 
       LEFT JOIN services s ON o.service_id = s.service_id
       LEFT JOIN promos p ON o.promo_id = p.promo_id
@@ -65,7 +71,7 @@ const Order = {
       LEFT JOIN photo_admins pa2 ON o.photo_admin_received_id = pa2.photoAdminId
       LEFT JOIN photo_admins pa3 ON o.photo_admin_delivery_id = pa3.photoAdminId
       LEFT JOIN photo_admins pa4 ON o.photo_admin_proof_id = pa4.photoAdminId
-      WHERE o.status NOT IN ("FINISHED", "CANCELLED")
+      WHERE os.status_code NOT IN ("FINISHED", "CANCELLED")
     `);
     return rows;
   },
@@ -78,8 +84,10 @@ const Order = {
              pa1.photoAdmin as pickup_photo,
              pa2.photoAdmin as received_photo,
              pa3.photoAdmin as delivery_photo,
-             pa4.photoAdmin as proof_image
+             pa4.photoAdmin as proof_image,
+             os.status_code as status
       FROM orders o 
+      LEFT JOIN order_statuses os ON o.status_id = os.status_id
       LEFT JOIN users u ON o.user_id = u.user_id 
       LEFT JOIN services s ON o.service_id = s.service_id
       LEFT JOIN promos p ON o.promo_id = p.promo_id
@@ -88,7 +96,7 @@ const Order = {
       LEFT JOIN photo_admins pa2 ON o.photo_admin_received_id = pa2.photoAdminId
       LEFT JOIN photo_admins pa3 ON o.photo_admin_delivery_id = pa3.photoAdminId
       LEFT JOIN photo_admins pa4 ON o.photo_admin_proof_id = pa4.photoAdminId
-      WHERE o.status NOT IN ("FINISHED", "CANCELLED") AND o.user_id = ?
+      WHERE os.status_code NOT IN ("FINISHED", "CANCELLED") AND o.user_id = ?
     `, [userId]);
     return rows;
   },
@@ -101,8 +109,10 @@ const Order = {
              pa1.photoAdmin as pickup_photo,
              pa2.photoAdmin as received_photo,
              pa3.photoAdmin as delivery_photo,
-             pa4.photoAdmin as proof_image
+             pa4.photoAdmin as proof_image,
+             os.status_code as status
       FROM orders o 
+      LEFT JOIN order_statuses os ON o.status_id = os.status_id
       LEFT JOIN users u ON o.user_id = u.user_id 
       LEFT JOIN services s ON o.service_id = s.service_id
       LEFT JOIN promos p ON o.promo_id = p.promo_id
@@ -116,14 +126,14 @@ const Order = {
     return rows[0];
   },
   getDailyCount: async (date) => {
-    const [rows] = await db.execute('SELECT COUNT(*) as count FROM orders WHERE pickup_date = ? AND status != "CANCELLED"', [date]);
+    const [rows] = await db.execute('SELECT COUNT(*) as count FROM orders o LEFT JOIN order_statuses os ON o.status_id = os.status_id WHERE o.pickup_date = ? AND os.status_code != "CANCELLED"', [date]);
     return rows[0].count;
   },
   create: async (data) => {
     const { order_id, user_id, service_id, pickup_date, delivery_date, status, pickupMethod, returnMethod, address, total_price, is_overflow_order, auto_shifted, payment_method, payment_status, notes, quantity, photos, originalPrice, discountAmount, promo_id } = data;
     const [result] = await db.execute(
-      `INSERT INTO orders (order_id, user_id, service_id, pickup_date, delivery_date, status, pickupMethod, returnMethod, address, total_price, is_overflow_order, auto_shifted, payment_method, payment_status, notes, quantity, originalPrice, discountAmount, promo_id) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO orders (order_id, user_id, service_id, pickup_date, delivery_date, status_id, pickupMethod, returnMethod, address, total_price, is_overflow_order, auto_shifted, payment_method, payment_status, notes, quantity, originalPrice, discountAmount, promo_id) 
+       VALUES (?, ?, ?, ?, ?, (SELECT status_id FROM order_statuses WHERE status_code = ? LIMIT 1), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [order_id, user_id, service_id, pickup_date, delivery_date || null, status || 'PENDING', pickupMethod, returnMethod, address, total_price, is_overflow_order || false, auto_shifted || false, payment_method || null, payment_status || 'PENDING', notes, quantity, originalPrice || null, discountAmount || null, promo_id || null]
     );
 
@@ -150,7 +160,7 @@ const Order = {
     const values = [];
 
     if (data.status) {
-      fields.push('status = ?');
+      fields.push('status_id = (SELECT status_id FROM order_statuses WHERE status_code = ? LIMIT 1)');
       values.push(data.status);
     }
 
@@ -219,7 +229,7 @@ const Order = {
     return result;
   },
   updateStatus: async (id, status) => {
-    const [result] = await db.execute('UPDATE orders SET status=? WHERE order_id=?', [status, id]);
+    const [result] = await db.execute('UPDATE orders SET status_id=(SELECT status_id FROM order_statuses WHERE status_code=? LIMIT 1) WHERE order_id=?', [status, id]);
     return result;
   },
   delete: async (id) => {
