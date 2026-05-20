@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminService } from '../../services/adminService';
-import { getStatusFlow, getStatusColor, STATUS_LABELS } from '../../services/orderService';
+import { getStatusFlow, getStatusColor, STATUS_LABELS, formatOrderId } from '../../services/orderService';
 import {
   Package, Users, Wrench, PlusCircle, ClipboardPen,
   Clock, ShoppingBag, DollarSign, Bell, FileText,
-  ChevronRight, TrendingUp, X, AlertCircle, ArrowRight, Tag, Activity, ListOrdered
+  ChevronRight, TrendingUp, X, AlertCircle, ArrowRight, Tag, Activity, ListOrdered, CheckCircle2
 } from 'lucide-react';
 import { useRef } from 'react';
 import './Admin.css';
@@ -18,6 +18,8 @@ const AdminDashboard = () => {
   const [needsAttention, setNeedsAttention] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [showNotif, setShowNotif] = useState(false);
+  const [confirmPopup, setConfirmPopup] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   const navigate = useNavigate();
   const notifRef = useRef(null);
 
@@ -66,12 +68,31 @@ const AdminDashboard = () => {
       const next = ci !== -1 && ci < flow.length - 1 ? flow[ci + 1] : null;
 
       if (next && next !== 'FINISHED') {
-        const { orderService } = await import('../../services/orderService');
-        await orderService.updateOrder({ order_id: orderId, status: next });
-        fetchStats();
+        setConfirmPopup({
+          orderId: order.order_id,
+          nextStatus: next,
+          title: (norm === 'MENUNGGU_VERIFIKASI') ? 'Konfirmasi Pembayaran' : 'Proses Pesanan',
+          message: (norm === 'MENUNGGU_VERIFIKASI') ? 'Verifikasi bahwa pembayaran customer sudah diterima dan pesanan sedang diproses. Lanjutkan?' : 'Lanjutkan ke tahap proses berikutnya?'
+        });
       }
     } catch (error) {
+      console.error("Gagal get order info:", error);
+    }
+  };
+
+  const confirmAction = async () => {
+    if (!confirmPopup) return;
+    setIsUpdating(true);
+    try {
+      const { orderService } = await import('../../services/orderService');
+      await orderService.updateOrder({ order_id: confirmPopup.orderId, status: confirmPopup.nextStatus });
+      fetchStats();
+      setConfirmPopup(null);
+    } catch (error) {
       console.error("Gagal update status:", error);
+      alert("Gagal memperbarui status: " + error.message);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -153,7 +174,7 @@ const AdminDashboard = () => {
                 <div key={o.order_id} className={`adm-attention-card ${isVerifikasi ? '' : 'blue'}`}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                      <span style={{ fontSize: 10, color: '#92400e', fontWeight: 700 }}>{o.order_id}</span>
+                      <span style={{ fontSize: 10, color: '#92400e', fontWeight: 700 }}>{formatOrderId(o)}</span>
                       <p style={{ margin: '2px 0 0', fontSize: 14, fontWeight: 800, color: '#0f172a' }}>{o.customerName}</p>
                       <p style={{ margin: '2px 0 0', fontSize: 11, color: '#64748b' }}>{o.service || 'N/A'}</p>
                     </div>
@@ -193,7 +214,7 @@ const AdminDashboard = () => {
           <div className="adm-stat-card" style={{ minWidth: 155 }}>
             <div className="adm-stat-icon" style={{ background: '#dcfce7' }}><DollarSign size={16} color="#15803d" /></div>
             <div className="adm-stat-label">Revenue Hari Ini</div>
-            <div className="adm-stat-val" style={{ fontSize: 15 }}>Rp {stats.revenueToday.toLocaleString('id-ID')}</div>
+            <div className="adm-stat-val" style={{ fontSize: 15 }}>Rp {Number(stats.revenueToday || 0).toLocaleString('id-ID')}</div>
           </div>
           <div className="adm-stat-card" style={{ minWidth: 130 }}>
             <div className="adm-stat-icon" style={{ background: '#fee2e2' }}><Clock size={16} color="#b91c1c" /></div>
@@ -280,7 +301,7 @@ const AdminDashboard = () => {
                   </div>
                   <div className="adm-activity-info">
                     <div className="adm-activity-name">{o.customerName || 'Customer'}</div>
-                    <div className="adm-activity-id">{o.order_id} · {o.service || 'Service'}</div>
+                    <div className="adm-activity-id">{formatOrderId(o)} · {o.service || 'Service'}</div>
                   </div>
                   <div className="adm-activity-right">
                     <span className="adm-badge" style={{ background: sc.bg, color: sc.text }}>{STATUS_LABELS[o.status] || o.status}</span>
@@ -298,6 +319,30 @@ const AdminDashboard = () => {
       <style>{`
         @keyframes adm-pulse { 0%,100%{transform:scale(1)}50%{transform:scale(1.15)} }
       `}</style>
+      {/* Confirmation Modal */}
+      {confirmPopup && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setConfirmPopup(null)}>
+          <div style={{ backgroundColor: 'white', borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '360px', animation: 'fadeIn 0.2s ease-out', boxShadow: '0 10px 25px rgba(0,0,0,0.15)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#E8F7FC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckCircle2 size={20} color="#064058" />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#111827' }}>{confirmPopup.title}</h3>
+            </div>
+            <p style={{ margin: '0 0 24px 0', color: '#4B5563', fontSize: '0.9rem', lineHeight: '1.6' }}>{confirmPopup.message}</p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setConfirmPopup(null)} disabled={isUpdating} style={{ flex: 1, padding: '12px', borderRadius: '12px', backgroundColor: '#F3F4F6', color: '#4B5563', border: 'none', fontWeight: 700, cursor: 'pointer', opacity: isUpdating ? 0.7 : 1 }}>Batal</button>
+              <button
+                onClick={confirmAction}
+                disabled={isUpdating}
+                style={{ flex: 1, padding: '12px', borderRadius: '12px', backgroundColor: '#064058', color: 'white', border: 'none', fontWeight: 700, cursor: isUpdating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                {isUpdating ? <Clock size={16} className="spin" /> : 'Ya, Lanjut'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

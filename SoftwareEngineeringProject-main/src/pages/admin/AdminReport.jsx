@@ -25,7 +25,7 @@ const getPrice = (o) => {
 };
 
 const isCounted = (o) =>
-  !['CANCELLED', 'PENDING', 'PENDING PAYMENT', 'MENUNGGU_VERIFIKASI'].includes(o.status);
+  ['FINISHED', 'COMPLETED'].includes(o.status);
 
 // ─── Component ───────────────────────────────────────────────────────────────
 const AdminReport = () => {

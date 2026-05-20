@@ -135,11 +135,11 @@ const Header = ({ toggleDrawer }) => {
               Pastikan sudah menyimpan semua yang diperlukan.
             </p>
             <div className="logout-confirm-actions">
-              <button className="logout-confirm-yes" onClick={handleLogoutConfirm}>
-                Ya, Keluar
-              </button>
               <button className="logout-confirm-no" onClick={() => setShowLogoutConfirm(false)}>
                 Batal
+              </button>
+              <button className="logout-confirm-yes" onClick={handleLogoutConfirm}>
+                Ya, Keluar
               </button>
             </div>
           </div>

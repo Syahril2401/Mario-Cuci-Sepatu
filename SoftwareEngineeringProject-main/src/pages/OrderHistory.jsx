@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { orderService, getStatusColor, STATUS_LABELS, getStatusFlow, STATUS_DESCRIPTIONS } from '../services/orderService';
+import { orderService, getStatusColor, STATUS_LABELS, getStatusFlow, STATUS_DESCRIPTIONS, formatOrderId } from '../services/orderService';
 import {
   Check, Package, ChevronDown, ChevronUp,
   MapPin, User, Smartphone, CreditCard,
@@ -177,7 +177,7 @@ const OrderHistory = () => {
                       {/* Header: ID & Status */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1E293B' }}>{order.order_id}</span>
+                          <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1E293B' }}>{formatOrderId(order)}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{
@@ -221,7 +221,7 @@ const OrderHistory = () => {
                           </p>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
                             <span style={{ fontWeight: 800, color: '#064058', fontSize: '1rem' }}>
-                              Rp {(order.total_price || order.totalPrice || 0).toLocaleString('id-ID')}
+                              Rp {Number(order.total_price || order.totalPrice || 0).toLocaleString('id-ID')}
                             </span>
                           </div>
                         </div>
@@ -451,7 +451,7 @@ const OrderHistory = () => {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, color: '#94A3B8' }}>TOTAL BAYAR</p>
-                    <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: '#064058' }}>Rp {(selectedOrder.total_price || selectedOrder.totalPrice || 0).toLocaleString('id-ID')}</p>
+                    <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: '#064058' }}>Rp {Number(selectedOrder.total_price || selectedOrder.totalPrice || 0).toLocaleString('id-ID')}</p>
                   </div>
                 </div>
               </section>

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   orderService, getStatusFlow, getStatusColor,
-  STATUS_LABELS, STATUS_DESCRIPTIONS
+  STATUS_LABELS, STATUS_DESCRIPTIONS, formatOrderId
 } from '../services/orderService';
 import {
   Package, Clock, ChevronDown, Truck, UserCheck,
@@ -18,9 +18,11 @@ const returnMethodLabel = (m) => m === 'SELF_PICKUP' ? '🏪 Ambil di Toko' : '�
 const fmtTime = (iso) => iso
   ? new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
   : null;
-const fmtDate = (iso) => iso
-  ? new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
-  : null;
+const fmtDate = (iso) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+};
 
 // ─── Timeline Component ──────────────────────────────────────
 const StatusTimeline = ({ currentStatus, history, orderFlow, onImageClick }) => {
@@ -116,9 +118,39 @@ const StatusTimeline = ({ currentStatus, history, orderFlow, onImageClick }) => 
 };
 
 // ─── Detail Bottom Sheet ─────────────────────────────────────
-const DetailSheet = ({ order, onClose, onImageClick }) => {
+const DetailSheet = ({ order, onClose, onImageClick, onUploadProof, onFinish }) => {
+  const [isUploading, setIsUploading] = useState(false);
+
+  if (!order) return null;
   const colors = getStatusColor(order.status);
   const flow = getStatusFlow(order);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) return alert('Maksimal 5MB');
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        if (width > 800 || height > 800) {
+          if (width > height) { height *= 800 / width; width = 800; }
+          else { width *= 800 / height; height = 800; }
+        }
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const base64 = canvas.toDataURL('image/jpeg', 0.6);
+        onUploadProof(order.order_id, base64).finally(() => setIsUploading(false));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
 
   return (
     <div
@@ -208,7 +240,7 @@ const DetailSheet = ({ order, onClose, onImageClick }) => {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 12, color: '#6b7280' }}>Est. Selesai</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#064058' }}>{order.delivery_date || 'N/A'}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#064058' }}>{fmtDate(order.delivery_date) || 'N/A'}</span>
               </div>
               {order.address?.detail && (
                 <div style={{ paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
@@ -219,8 +251,8 @@ const DetailSheet = ({ order, onClose, onImageClick }) => {
             </div>
           </section>
 
-          {/* Legacy Proof Photos (if any exist not in history) */}
-          {(order.pickup_photo || order.received_photo || order.delivery_photo) && (!order.history || !order.history.some(h => h.proof_image)) && (
+          {/* All Proof Photos */}
+          {(order.pickup_photo || order.received_photo || order.proof_image || order.delivery_photo) && (
             <section style={{ marginBottom: 20 }}>
               <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 800, color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Camera size={15} color="#064058" /> Bukti Foto
@@ -229,6 +261,7 @@ const DetailSheet = ({ order, onClose, onImageClick }) => {
                 {[
                   { photo: order.pickup_photo, time: order.pickup_photo_time, label: '📸 Bukti Penjemputan' },
                   { photo: order.received_photo, time: order.received_photo_time, label: '📸 Diterima di Toko' },
+                  { photo: order.proof_image, time: order.proof_image_time || order.updated_at, label: '📸 Bukti Selesai Cuci' },
                   { photo: order.delivery_photo, time: order.delivery_photo_time, label: order.returnMethod === 'SELF_PICKUP' ? '📸 Bukti Pengambilan' : '📸 Bukti Pengantaran' },
                 ].filter(p => p.photo).map((p, i) => (
                   <div key={i} style={{ background: '#f8fafc', border: '1px solid #f0f0f0', borderRadius: 14, padding: 12 }}>
@@ -258,7 +291,7 @@ const DetailSheet = ({ order, onClose, onImageClick }) => {
               <div style={{ textAlign: 'right' }}>
                 <p style={{ margin: 0, fontSize: 10.5, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Total</p>
                 <p style={{ margin: '3px 0 0', fontSize: 16, fontWeight: 900, color: '#064058' }}>
-                  Rp {(order.total_price || order.totalPrice || 0).toLocaleString('id-ID')}
+                  Rp {Number(order.total_price || order.totalPrice || 0).toLocaleString('id-ID')}
                 </p>
               </div>
             </div>
@@ -267,13 +300,36 @@ const DetailSheet = ({ order, onClose, onImageClick }) => {
 
         {/* ── Sticky footer ── */}
         <div style={{ padding: '12px 20px 24px', flexShrink: 0, borderTop: '1px solid #f3f4f6' }}>
-          <button onClick={onClose} style={{
-            width: '100%', height: 50, borderRadius: 14,
-            background: '#064058', color: 'white', border: 'none',
-            fontWeight: 800, fontSize: 14, cursor: 'pointer',
-          }}>
-            Tutup
-          </button>
+          {(order.status === 'READY_PICKUP' || order.status === 'ON_DELIVERY') ? (
+            <label style={{
+              display: 'flex', width: '100%', height: 50, borderRadius: 14,
+              background: '#059669', color: 'white', border: 'none',
+              fontWeight: 800, fontSize: 14, cursor: isUploading ? 'not-allowed' : 'pointer',
+              alignItems: 'center', justifyContent: 'center', gap: 8,
+              opacity: isUploading ? 0.7 : 1
+            }}>
+              {isUploading ? <span className="spinner-small" style={{ borderTopColor: 'white' }}></span> : <Camera size={18} />}
+              {isUploading ? 'Mengupload...' : (order.status === 'READY_PICKUP' ? 'Upload Bukti Pengambilan' : 'Upload Bukti Diterima')}
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} disabled={isUploading} />
+            </label>
+          ) : (order.status === 'RECEIVED' || order.status === 'SUDAH_DIAMBIL' || order.status === 'DELIVERED') ? (
+            <button onClick={(e) => { if (onFinish) onFinish(e); }} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              width: '100%', height: 50, borderRadius: 14,
+              background: '#10b981', color: 'white', border: 'none',
+              fontWeight: 800, fontSize: 14, cursor: 'pointer',
+            }}>
+              <CheckCircle size={18} /> Selesaikan Pesanan
+            </button>
+          ) : (
+            <button onClick={onClose} style={{
+              width: '100%', height: 50, borderRadius: 14,
+              background: '#064058', color: 'white', border: 'none',
+              fontWeight: 800, fontSize: 14, cursor: 'pointer',
+            }}>
+              Tutup
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -286,6 +342,7 @@ const OrderStatus = () => {
   const [expandedId, setExpandedId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showCancelModal, setShowCancelModal] = useState(null);
+  const [showFinishModal, setShowFinishModal] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const [filterTab, setFilterTab] = useState(location.state?.tab || 'Semua');
@@ -299,17 +356,36 @@ const OrderStatus = () => {
     orderService.getHistory().then(res => setActiveOrders(res.data));
   };
 
-  const handleConfirmReceived = async (order, e) => {
-    e.stopPropagation();
-    if (!window.confirm('Sudah menerima barang? Status order akan berubah menjadi Selesai.')) return;
+  const handleUploadProof = async (orderId, base64) => {
+    try {
+      const order = activeOrders.find(o => o.order_id === orderId);
+      if (!order) return;
+      const nextStatus = order.status === 'ON_DELIVERY' ? 'RECEIVED' : 'SUDAH_DIAMBIL';
+      const updatedOrder = { ...order, delivery_photo: base64, status: nextStatus };
+      await orderService.updateOrder(updatedOrder);
+      fetchOrders();
+      setSelectedOrder(null);
+    } catch (e) {
+      alert('Gagal mengupload bukti: ' + e.message);
+    }
+  };
+
+  const handleConfirmReceived = (order, e) => {
+    if (e) e.stopPropagation();
+    setShowFinishModal(order);
+  };
+
+  const confirmFinishOrder = async () => {
+    if (!showFinishModal) return;
     setIsUpdating(true);
     try {
-      await orderService.updateOrder({ ...order, status: 'FINISHED', customer_confirmed: true });
+      await orderService.updateOrder({ ...showFinishModal, status: 'FINISHED', customer_confirmed: true });
       fetchOrders();
     } catch (err) {
       alert(err.message);
     } finally {
       setIsUpdating(false);
+      setShowFinishModal(null);
     }
   };
 
@@ -330,14 +406,15 @@ const OrderStatus = () => {
   const TAB_FILTERS = {
     'Semua': () => true,
     'Pending': o => o.status === 'PENDING' || o.status === 'MENUNGGU_VERIFIKASI',
-    'Proses': o => ['PROCESSING', 'ANTRI', 'WAITING_PICKUP', 'BARANG_DIAMBIL', 'MENUNGGU_PENGANTARAN', 'BARANG_DITERIMA'].includes(o.status),
-    'Selesai': o => ['RECEIVED', 'READY_DELIVERY', 'READY_PICKUP', 'ON_DELIVERY', 'SUDAH_DIAMBIL', 'FINISHED', 'COMPLETED'].includes(o.status),
+    'Proses': o => ['PROCESSING', 'ANTRI', 'WAITING_PICKUP', 'BARANG_DIAMBIL', 'MENUNGGU_PENGANTARAN', 'BARANG_DITERIMA', 'READY_PICKUP', 'SUDAH_DIAMBIL', 'ON_DELIVERY'].includes(o.status),
+    'Selesai': o => ['RECEIVED', 'READY_DELIVERY', 'FINISHED', 'COMPLETED'].includes(o.status),
+    'Dibatalkan': o => o.status === 'CANCELLED'
   };
 
   const STATUS_PRIORITY = {
     'PENDING': 1,
     'MENUNGGU_VERIFIKASI': 2,
-    
+
     'WAITING_PICKUP': 3,
     'BARANG_DIAMBIL': 4,
     'ANTRI': 5,
@@ -352,18 +429,18 @@ const OrderStatus = () => {
     'RECEIVED': 13,
     'FINISHED': 14,
     'COMPLETED': 15,
-    
+
     'CANCELLED': 99
   };
 
   const filteredOrders = activeOrders.filter(TAB_FILTERS[filterTab] || (() => true)).sort((a, b) => {
     const priorityA = STATUS_PRIORITY[a.status] || 50;
     const priorityB = STATUS_PRIORITY[b.status] || 50;
-    
+
     if (priorityA !== priorityB) {
       return priorityA - priorityB;
     }
-    
+
     // Sort by order_id descending if priority is the same
     return b.order_id - a.order_id;
   });
@@ -439,7 +516,7 @@ const OrderStatus = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                     <div>
                       <p style={{ margin: 0, fontSize: 11.5, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                        {order.order_id}
+                        {formatOrderId(order)}
                       </p>
                       <p style={{ margin: '3px 0 0', fontSize: 14, fontWeight: 800, color: '#111827', lineHeight: 1.2 }}>
                         {order.service || 'Service Layanan'}
@@ -473,17 +550,8 @@ const OrderStatus = () => {
                   {/* Date + confirm */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#9ca3af', fontSize: 11.5 }}>
-                      <Clock size={12} /> Est. Selesai: <strong style={{ color: '#374151' }}>{order.delivery_date || 'N/A'}</strong>
+                      <Clock size={12} /> Est. Selesai: <strong style={{ color: '#374151' }}>{fmtDate(order.delivery_date) || 'N/A'}</strong>
                     </div>
-                    {(order.status === 'RECEIVED' || order.status === 'DELIVERED') && (
-                      <button
-                        disabled={isUpdating}
-                        onClick={(e) => handleConfirmReceived(order, e)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#10b981', color: 'white', border: 'none', borderRadius: 10, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        <CheckCircle size={13} /> Terima
-                      </button>
-                    )}
                   </div>
 
                   {/* Expanded timeline */}
@@ -528,7 +596,16 @@ const OrderStatus = () => {
 
       {/* Detail Sheet */}
       {selectedOrder && (
-        <DetailSheet order={selectedOrder} onClose={() => setSelectedOrder(null)} onImageClick={setLightboxImage} />
+        <DetailSheet
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onImageClick={setLightboxImage}
+          onUploadProof={handleUploadProof}
+          onFinish={(e) => {
+            handleConfirmReceived(selectedOrder, e);
+            setSelectedOrder(null);
+          }}
+        />
       )}
 
       {/* Lightbox Modal */}
@@ -586,6 +663,13 @@ const OrderStatus = () => {
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
               <button
+                className="cancel-modal-btn-no"
+                onClick={() => setShowCancelModal(null)}
+                style={{ flex: 1, padding: 12, borderRadius: 12, background: '#F3F4F6', color: '#374151', border: 'none', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                Tidak
+              </button>
+              <button
                 className="cancel-modal-btn-yes"
                 onClick={confirmCancelOrder}
                 disabled={isUpdating}
@@ -593,12 +677,50 @@ const OrderStatus = () => {
               >
                 {isUpdating ? 'Memproses...' : 'Ya, Batalkan'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Finish Confirmation Modal */}
+      {showFinishModal && (
+        <div
+          onClick={() => setShowFinishModal(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 3000,
+            background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20, animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white', borderRadius: 24, padding: 24,
+              width: '100%', maxWidth: 320, textAlign: 'center',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+              animation: 'slideUpSheet 0.3s cubic-bezier(0.32,0.72,0,1)'
+            }}
+          >
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <CheckCircle size={32} color="#10b981" />
+            </div>
+            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 800, color: '#111827' }}>Selesaikan Pesanan?</h3>
+            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6B7280', lineHeight: 1.5 }}>
+              Apakah Anda sudah menerima barang dengan baik? Status pesanan akan diubah menjadi Selesai.
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
               <button
-                className="cancel-modal-btn-no"
-                onClick={() => setShowCancelModal(null)}
+                onClick={() => setShowFinishModal(null)}
                 style={{ flex: 1, padding: 12, borderRadius: 12, background: '#F3F4F6', color: '#374151', border: 'none', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
               >
-                Tidak
+                Batal
+              </button>
+              <button
+                onClick={confirmFinishOrder}
+                disabled={isUpdating}
+                style={{ flex: 1, padding: 12, borderRadius: 12, background: '#10b981', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', opacity: isUpdating ? 0.7 : 1 }}
+              >
+                {isUpdating ? 'Memproses...' : 'Ya, Selesai'}
               </button>
             </div>
           </div>

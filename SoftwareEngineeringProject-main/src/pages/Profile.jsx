@@ -79,9 +79,16 @@ const Profile = () => {
   /* ─── Handlers ─── */
   const handleUpdate = (e) => {
     e.preventDefault();
-    if (profile.phone && !profile.phone.startsWith('08') && !profile.phone.startsWith('+62')) {
-      setNotification({ show: true, message: 'Nomor telepon harus diawali dengan 08 atau +62', type: 'error' });
-      return;
+    if (profile.phone) {
+      if (!profile.phone.startsWith('08') && !profile.phone.startsWith('+62')) {
+        setNotification({ show: true, message: 'Nomor telepon harus diawali dengan 08 atau +62', type: 'error' });
+        return;
+      }
+      const phoneRegex = /^(?:\+62|08)[0-9]{8,13}$/;
+      if (!phoneRegex.test(profile.phone)) {
+        setNotification({ show: true, message: 'Nomor telepon hanya boleh berisi angka dengan panjang 10-15 karakter', type: 'error' });
+        return;
+      }
     }
     setNotification({ show: true, message: 'Menyimpan perubahan...', type: 'loading' });
     userService.updateProfile(profile).then((res) => {
@@ -316,7 +323,10 @@ const Profile = () => {
                   type="tel"
                   placeholder="Contoh: 081234567890"
                   value={profile.phone || ''}
-                  onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))}
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^\d+]/g, '');
+                    setProfile(p => ({ ...p, phone: val }));
+                  }}
                 />
               </div>
             </div>
@@ -503,11 +513,11 @@ const Profile = () => {
               Pastikan sudah menyimpan semua yang diperlukan.
             </p>
             <div className="logout-confirm-actions">
-              <button className="logout-confirm-yes" onClick={handleLogoutConfirm}>
-                Ya, Keluar
-              </button>
               <button className="logout-confirm-no" onClick={() => setShowLogoutConfirm(false)}>
                 Batal
+              </button>
+              <button className="logout-confirm-yes" onClick={handleLogoutConfirm}>
+                Ya, Keluar
               </button>
             </div>
           </div>

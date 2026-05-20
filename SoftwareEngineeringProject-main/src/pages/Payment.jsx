@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { orderService } from '../services/orderService';
+import { orderService, formatOrderId } from '../services/orderService';
 import { CheckCircle, ChevronLeft, CreditCard, Smartphone, Check, ShieldCheck, Clock, Info, AlertCircle, X } from 'lucide-react';
 import qrisImage from '../assets/qris.png';
 import './Pages.css';
@@ -109,7 +109,7 @@ const Payment = () => {
             <div style={{ backgroundColor: '#F8FAFC', borderRadius: '16px', padding: '16px', marginBottom: '24px', border: '1px solid #E2E8F0', textAlign: 'left' }}>
                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                  <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Order ID:</span>
-                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E293B' }}>{order?.order_id}</span>
+                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E293B' }}>{formatOrderId(order)}</span>
                </div>
                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                  <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Status:</span>
@@ -173,7 +173,7 @@ const Payment = () => {
               <div style={{ backgroundColor: '#F8FAFC', borderRadius: '16px', padding: '16px', marginBottom: '24px', border: '1px solid #E2E8F0', textAlign: 'left' }}>
                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                    <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Order ID:</span>
-                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E293B' }}>{order?.order_id}</span>
+                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E293B' }}>{formatOrderId(order)}</span>
                  </div>
                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                    <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Status:</span>
@@ -200,7 +200,7 @@ const Payment = () => {
 
         {/* Order Summary Card */}
         <div className="card fade-in delay-2" style={{ padding: '16px', borderRadius: '16px', marginBottom: '16px', border: '1px solid #E2E8F0', backgroundColor: 'white' }}>
-          <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600, marginBottom: '2px' }}>#{order.order_id}</div>
+          <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600, marginBottom: '2px' }}>{formatOrderId(order)}</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#1E293B' }}>{order.service || 'Service Layanan'}</h4>
             <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#064058' }}>Rp {(order.total_price || order.totalPrice || 0).toLocaleString('id-ID')}</span>
