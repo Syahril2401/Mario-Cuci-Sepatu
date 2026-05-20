@@ -39,7 +39,7 @@ const AdminPromoManagement = () => {
   };
 
   const openEdit = (promo) => { 
-    setEditingId(promo.id); 
+    setEditingId(promo.promo_id || promo.id); 
     setFormError('');
     setFormData({
       ...promo,
@@ -68,14 +68,14 @@ const AdminPromoManagement = () => {
       endDate: getLocalDateStr(promo.endDate),
       status: promo.status === 'active' ? 'inactive' : 'active'
     };
-    await promoService.updatePromo(promo.id, payload);
+    await promoService.updatePromo(promo.promo_id || promo.id, payload);
     loadData();
   };
 
   // Get active (non-expired, status=active) promos excluding the one being edited
   const getActiveNonExpiredPromos = () => {
     return promos.filter(p => {
-      if (editingId && p.id === editingId) return false;
+      if (editingId && (p.promo_id || p.id) === editingId) return false;
       if (p.status !== 'active') return false;
       if (isExpired(p)) return false;
       return true;
@@ -247,7 +247,7 @@ const AdminPromoManagement = () => {
               const active  = promo.status === 'active' && !expired;
               const leftStr = getTimeLeft(promo.endDate);
               return (
-                <div key={promo.id} className={`adm-promo-card ${cls} adm-fade2`}>
+                <div key={promo.promo_id || promo.id} className={`adm-promo-card ${cls} adm-fade2`}>
                   {/* Top row */}
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
                     <div>
@@ -291,7 +291,7 @@ const AdminPromoManagement = () => {
                     <button onClick={() => openEdit(promo)} style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:'8px', borderRadius:9, border:'1.5px solid #e2e8f0', background:'white', color:'#374151', fontWeight:700, fontSize:12, cursor:'pointer' }}>
                       <Edit2 size={13} /> Edit
                     </button>
-                    <button onClick={() => setDeleteConfirmId(promo.id)} style={{ display:'flex', alignItems:'center', gap:5, padding:'8px 12px', borderRadius:9, border:'none', background:'#fee2e2', color:'#b91c1c', fontWeight:700, fontSize:12, cursor:'pointer' }}>
+                    <button onClick={() => setDeleteConfirmId(promo.promo_id || promo.id)} style={{ display:'flex', alignItems:'center', gap:5, padding:'8px 12px', borderRadius:9, border:'none', background:'#fee2e2', color:'#b91c1c', fontWeight:700, fontSize:12, cursor:'pointer' }}>
                       <Trash2 size={13} />
                     </button>
                   </div>
