@@ -10,6 +10,7 @@ import useAuthStore from '../store/authStore';
 import { serviceService } from '../services/serviceService';
 import { promoService } from '../services/promoService';
 import MapViewer from '../components/MapViewer';
+import { landingService } from '../services/landingService';
 import './Landing.css';
 import logo from '../assets/logo.png';
 
@@ -31,7 +32,20 @@ const CAROUSEL_ITEMS = [
 
 import { WhatsappIcon, InstagramIcon } from '../components/Icons';
 
-const HeroCarousel = () => {
+const getIcon = (name) => {
+  switch(name) {
+    case 'Sparkles': return <Sparkles size={14} />;
+    case 'Zap': return <Zap size={14} />;
+    case 'Timer': return <Timer size={14} />;
+    case 'ShieldCheck': return <ShieldCheck size={14} />;
+    case 'Truck': return <Truck size={14} />;
+    default: return <Sparkles size={14} />;
+  }
+};
+
+const HeroCarousel = ({ items }) => {
+  const carouselItems = items && items.length > 0 && items[0].img !== "" ? items : CAROUSEL_ITEMS;
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [touchStart, setTouchStart] = useState(null);
@@ -42,11 +56,11 @@ const HeroCarousel = () => {
   const minSwipeDistance = 50;
 
   const nextSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % CAROUSEL_ITEMS.length);
-  }, []);
+    setCurrentIndex((prev) => (prev + 1) % carouselItems.length);
+  }, [carouselItems.length]);
 
   const prevSlide = () => {
-    setCurrentIndex((prev) => (prev - 1 + CAROUSEL_ITEMS.length) % CAROUSEL_ITEMS.length);
+    setCurrentIndex((prev) => (prev - 1 + carouselItems.length) % carouselItems.length);
     handleUserInteraction();
   };
 
@@ -102,10 +116,10 @@ const HeroCarousel = () => {
       onTouchEnd={onTouchEnd}
     >
       <div className="carousel-track" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
-        {CAROUSEL_ITEMS.map((item, idx) => (
+        {carouselItems.map((item, idx) => (
           <div key={idx} className={`carousel-slide ${idx === currentIndex ? 'active' : ''}`}>
             <div className="carousel-label">
-              {item.icon} {item.label}
+              {item.icon || getIcon(item.iconName)} {item.label}
             </div>
             <img src={item.img} alt={item.label} className="carousel-img" />
           </div>
@@ -118,7 +132,7 @@ const HeroCarousel = () => {
       </div>
 
       <div className="carousel-dots">
-        {CAROUSEL_ITEMS.map((_, idx) => (
+        {carouselItems.map((_, idx) => (
           <div
             key={idx}
             className={`dot ${idx === currentIndex ? 'active' : ''}`}
@@ -228,6 +242,7 @@ const Landing = () => {
   const [services, setServices] = useState([]);
   const [promos, setPromos] = useState([]);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [config, setConfig] = useState(null);
 
   const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
@@ -239,6 +254,9 @@ const Landing = () => {
     promoService.getPromos().then(res => {
       setPromos(res.data || []);
     });
+    landingService.getLandingConfig().then(res => {
+      if (res.data && res.data.data) setConfig(res.data.data);
+    }).catch(err => console.error("Failed to load landing config", err));
   }, []);
 
   const handleNavItemClick = (item) => {
@@ -255,8 +273,8 @@ const Landing = () => {
     const scrollTop = e.target.scrollTop;
     setScrolled(scrollTop > 10);
     
-    const aboutSection = document.getElementById('about');
-    if (aboutSection && scrollTop > aboutSection.offsetTop - 200) {
+    const hasilNyataSection = document.getElementById('hasil-nyata');
+    if (hasilNyataSection && scrollTop > hasilNyataSection.offsetTop - 200) {
       setShowBackToTop(true);
     } else {
       setShowBackToTop(false);
@@ -293,33 +311,34 @@ const Landing = () => {
 
         {/* HERO SECTION */}
         <section id="home" className="hero-section">
-          <HeroCarousel />
+          <HeroCarousel items={config?.carousel} />
 
           <div className="hero-content">
-            <h1>Sepatu Kinclong,<br />Percaya Diri Maksimal 👟</h1>
-            <p>Cuci sepatu profesional dengan teknik terbaik untuk hasil bersih maksimal sampai ke detail terkecil.</p>
+            <h1 dangerouslySetInnerHTML={{ __html: config?.hero?.title || 'Sepatu Kinclong,<br />Percaya Diri Maksimal 👟' }} />
+            <p>{config?.hero?.subtitle || 'Cuci sepatu profesional dengan teknik terbaik untuk hasil bersih maksimal sampai ke detail terkecil.'}</p>
 
             <button className="btn-premium" onClick={() => navigate(isAuthenticated ? '/checkout' : '/register')}>
-              {isAuthenticated ? 'Order Sekarang' : 'Mulai Order'}
+              {config?.hero?.buttonText || (isAuthenticated ? 'Order Sekarang' : 'Mulai Order')}
             </button>
 
             <div className="hero-stats">
-              <div className="stat-item">
-                <span className="stat-val">⭐ 100+</span>
-                <span className="stat-label">Happy Users</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-val">⚡ 2-3 Hari</span>
-                <span className="stat-label">Proses Kilat</span>
-              </div>
+              {(config?.hero?.stats || [
+                { val: "⭐ 100+", label: "Happy Users" },
+                { val: "⚡ 2-3 Hari", label: "Proses Kilat" }
+              ]).map((stat, i) => (
+                <div key={i} className="stat-item">
+                  <span className="stat-val">{stat.val}</span>
+                  <span className="stat-label">{stat.label}</span>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
         {/* WHY CHOOSE US SECTION */}
         <section id="why-us" className="landing-section">
-          <h2 className="section-title-premium">Kenapa Pilih Kami?</h2>
-          <p className="section-subtitle-premium">Kualitas premium dengan pelayanan setulus hati.</p>
+          <h2 className="section-title-premium">{config?.whyUs?.title || 'Kenapa Pilih Kami?'}</h2>
+          <p className="section-subtitle-premium">{config?.whyUs?.subtitle || 'Kualitas premium dengan pelayanan setulus hati.'}</p>
 
           <div className="why-grid">
             <div className="why-card premium-card">
@@ -343,11 +362,11 @@ const Landing = () => {
 
         {/* SERVICES PREVIEW */}
         <section id="services" className="landing-section bg-light">
-          <h2 className="section-title-premium">Layanan Kami</h2>
-          <p className="section-subtitle-premium">Solusi tepat untuk setiap jenis sepatu Anda.</p>
+          <h2 className="section-title-premium">{config?.services?.title || 'Layanan Kami'}</h2>
+          <p className="section-subtitle-premium">{config?.services?.subtitle || 'Solusi tepat untuk setiap jenis sepatu Anda.'}</p>
 
           <div className="services-grid">
-            {services.slice(0, 3).map((service, index) => {
+            {services.filter(s => config?.services?.selectedIds ? config.services.selectedIds.includes(s.service_id) : true).slice(0, 3).map((service, index) => {
               const activePromo = promoService.getActivePromoForService(service, promos);
               const discountedPrice = promoService.calculateDiscountedPrice(service.price, activePromo);
 
@@ -387,40 +406,39 @@ const Landing = () => {
         </section>
 
         {/* BEFORE AFTER SECTION */}
-        <section className="landing-section">
-          <h2 className="section-title-premium">Hasil Nyata</h2>
-          <p className="section-subtitle-premium">Bukan sekedar bersih, tapi kembali seperti baru.</p>
+        <section id="hasil-nyata" className="landing-section">
+          <h2 className="section-title-premium">{config?.hasilNyata?.title || 'Hasil Nyata'}</h2>
+          <p className="section-subtitle-premium">{config?.hasilNyata?.subtitle || 'Bukan sekedar bersih, tapi kembali seperti baru.'}</p>
 
           <div className="comparison-container">
-            <img src={beforeAfterImg} alt="Before After" style={{ width: '100%', display: 'block' }} />
+            <img src={config?.hasilNyata?.img || beforeAfterImg} alt="Before After" style={{ width: '100%', display: 'block' }} />
           </div>
         </section>
 
         {/* ABOUT SECTION */}
         <section id="about" className="landing-section bg-soft-blue">
-          <h2 className="section-title-premium">ABOUT US</h2>
+          <h2 className="section-title-premium">{config?.aboutUs?.title || 'ABOUT US'}</h2>
           <p className="about-text">
-            Mario Cuci Sepatu hadir sebagai solusi perawatan sepatu premium di Surabaya.
-            Kami menggunakan bahan pembersih ramah lingkungan dan teknik khusus untuk
-            menjaga kualitas sepatu Anda tetap awet.
+            {config?.aboutUs?.description || 'Mario Cuci Sepatu hadir sebagai solusi perawatan sepatu premium di Surabaya. Kami menggunakan bahan pembersih ramah lingkungan dan teknik khusus untuk menjaga kualitas sepatu Anda tetap awet.'}
           </p>
 
           <div className="hero-stats">
-            <div className="stat-item">
-              <span className="stat-val">5+</span>
-              <span className="stat-label">Tahun Pengalaman</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-val">10k+</span>
-              <span className="stat-label">Sepatu Selesai</span>
-            </div>
+            {(config?.aboutUs?.stats || [
+              { val: "5+", label: "Tahun Pengalaman" },
+              { val: "10k+", label: "Sepatu Selesai" }
+            ]).map((stat, i) => (
+              <div key={i} className="stat-item">
+                <span className="stat-val">{stat.val}</span>
+                <span className="stat-label">{stat.label}</span>
+              </div>
+            ))}
           </div>
         </section>
 
         {/* LOCATION SECTION */}
         <section id="location" className="landing-section">
-          <h2 className="section-title-premium">OUR LOCATION</h2>
-          <p className="section-subtitle-premium">Kunjungi studio kami di Surabaya Barat.</p>
+          <h2 className="section-title-premium">{config?.location?.title || 'OUR LOCATION'}</h2>
+          <p className="section-subtitle-premium">{config?.location?.subtitle || 'Kunjungi studio kami di Surabaya Barat.'}</p>
 
           <div className="premium-card" style={{ padding: '20px' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '20px' }}>
@@ -428,22 +446,21 @@ const Landing = () => {
                 <MapPin size={20} />
               </div>
               <div>
-                <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 900, color: 'var(--primary)' }}>Mario Cuci Sepatu</h4>
-                <p style={{ margin: 0, color: 'var(--text-gray)', fontSize: '0.85rem', lineHeight: '1.5' }}>
-                  Northwest Lake NG18-31, Babat Jerawat,<br />
-                  Kec. Pakal, Surabaya, Jawa Timur
+                <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 900, color: 'var(--primary)' }}>{config?.location?.addressName || 'Mario Cuci Sepatu'}</h4>
+                <p style={{ margin: 0, color: 'var(--text-gray)', fontSize: '0.85rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                  {config?.location?.addressText || 'Northwest Lake NG18-31, Babat Jerawat,\nKec. Pakal, Surabaya, Jawa Timur'}
                 </p>
               </div>
             </div>
 
             <div style={{ width: '100%', marginBottom: '20px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #f1f5f9' }}>
-              <MapViewer latitude={-7.259870} longitude={112.624012} height="200px" />
+              <MapViewer latitude={config?.location?.latitude || -7.259870} longitude={config?.location?.longitude || 112.624012} height="200px" />
             </div>
 
             <button
               className="btn-premium"
               style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.85rem' }}
-              onClick={() => window.open('https://www.openstreetmap.org/search?query=-7.259870%2C112.624012&zoom=17&minlon=112.60023951530458&minlat=-7.26245734649342&maxlon=112.62083888053895&maxlat=-7.252495609228964#map=17/-7.259871/112.624015', '_blank')}
+              onClick={() => window.open(config?.location?.mapLink || 'https://www.openstreetmap.org/search?query=-7.259870%2C112.624012', '_blank')}
             >
               <Navigation size={16} />
               Buka di Peta
@@ -463,21 +480,21 @@ const Landing = () => {
             </div>
 
             <p className="footer-description">
-              Premium Shoe Care Specialists di Surabaya. Kami mengembalikan kilau dan kebersihan sepatu kesayangan Anda dengan teknik profesional dan bahan ramah lingkungan.
+              {config?.footer?.description || 'Premium Shoe Care Specialists di Surabaya. Kami mengembalikan kilau dan kebersihan sepatu kesayangan Anda dengan teknik profesional dan bahan ramah lingkungan.'}
             </p>
 
             <div className="footer-contact-list">
               <div className="contact-row">
                 <MapPin size={18} className="contact-icon" />
-                <span>Northwest Lake NG18-31, Babat Jerawat, Surabaya</span>
+                <span>{config?.footer?.address || 'Northwest Lake NG18-31, Babat Jerawat, Surabaya'}</span>
               </div>
               <div className="contact-row">
                 <Clock size={18} className="contact-icon" />
-                <span>Senin - Sabtu • 09.00 - 18.00</span>
+                <span>{config?.footer?.schedule || 'Senin - Sabtu • 09.00 - 18.00'}</span>
               </div>
               <div className="contact-row">
                 <Phone size={18} className="contact-icon" />
-                <span>+62 812 3398 1688</span>
+                <span>{config?.footer?.phone || '+62 812 3398 1688'}</span>
               </div>
             </div>
 

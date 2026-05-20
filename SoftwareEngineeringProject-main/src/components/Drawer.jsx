@@ -37,6 +37,7 @@ const ADMIN_GROUPS = [
       { name: 'Kelola Pesanan', path: '/admin/orders', icon: <Package size={20} color="#064058" />, sub: 'Semua pesanan' },
       { name: 'Promo', path: '/admin/promos', icon: <Tag size={20} color="#064058" />, sub: 'Manajemen promo' },
       { name: 'Laporan', path: '/admin/report', icon: <FileText size={20} color="#064058" />, sub: 'Laporan & statistik' },
+      { name: 'Edit Landing', path: '/admin/landing', icon: <Settings size={20} color="#064058" />, sub: 'Pengaturan halaman utama' },
     ],
   },
 ];

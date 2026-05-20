@@ -9,6 +9,7 @@ const orderRoutes = require('./src/routes/orderRoutes');
 const promoRoutes = require('./src/routes/promoRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const userRoutes = require('./src/routes/userRoutes');
+const landingRoutes = require('./src/routes/landingRoutes');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/promos', promoRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/landing', landingRoutes);
 
 // Route dasar untuk cek status server
 app.get('/', (req, res) => {

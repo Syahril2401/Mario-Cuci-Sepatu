@@ -19,6 +19,7 @@ import AdminServiceManagement from './pages/admin/AdminServiceManagement';
 import AdminOrderManagement from './pages/admin/AdminOrderManagement';
 import AdminReport from './pages/admin/AdminReport';
 import AdminPromoManagement from './pages/admin/AdminPromoManagement';
+import AdminLandingConfig from './pages/admin/AdminLandingConfig';
 
 // Public Route wrapper (redirects to appropriate home if already logged in)
 const PublicRoute = ({ children }) => {
@@ -87,6 +88,7 @@ const App = () => {
               <Route path="/admin/orders" element={<AdminOrderManagement />} />
               <Route path="/admin/promos" element={<AdminPromoManagement />} />
               <Route path="/admin/report" element={<AdminReport />} />
+              <Route path="/admin/landing" element={<AdminLandingConfig />} />
             </Route>
           </Route>
 
