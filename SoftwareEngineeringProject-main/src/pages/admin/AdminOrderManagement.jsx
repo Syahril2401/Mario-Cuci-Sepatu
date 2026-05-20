@@ -26,16 +26,9 @@ const AdminOrderManagement = () => {
     const isSelfPickup = returnMethod === 'SELF_PICKUP';
 
     switch (status) {
+      case 'PENDING':
       case 'MENUNGGU_VERIFIKASI':
-        return { title: 'Konfirmasi Pembayaran', buttonLabel: 'Konfirmasi Pembayaran ✓', nextStatus: isSelfDrop ? 'MENUNGGU_PENGANTARAN' : 'WAITING_PICKUP', requiresPhoto: false, description: 'Verifikasi bahwa pembayaran customer sudah diterima.' };
-      case 'MENUNGGU_PENGANTARAN':
-        return { title: 'Upload Bukti Barang Diterima', buttonLabel: 'Konfirmasi Barang Diterima', nextStatus: 'BARANG_DITERIMA', requiresPhoto: true, photoField: 'received_photo', icon: <Package size={24} color="#0369A1" />, description: 'Upload foto sebagai bukti sepatu sudah diterima di toko.' };
-      case 'WAITING_PICKUP':
-        return { title: 'Upload Bukti Penjemputan', buttonLabel: 'Konfirmasi Sudah Dijemput', nextStatus: 'BARANG_DIAMBIL', requiresPhoto: true, photoField: 'pickup_photo', icon: <Truck size={24} color="#D97706" />, description: 'Upload foto bukti admin sudah menjemput sepatu.' };
-      case 'BARANG_DITERIMA':
-      case 'BARANG_DIAMBIL':
-        return { title: 'Mulai Proses Cuci', buttonLabel: 'Mulai Proses Sekarang ▶', nextStatus: 'PROCESSING', requiresPhoto: false, description: 'Tandai bahwa proses pencucian sepatu sudah dimulai.' };
-      case 'PROCESSING':
+        return { title: 'Konfirmasi Pembayaran', buttonLabel: 'Konfirmasi Pembayaran ✓', nextStatus: 'PROCESSING', requiresPhoto: false, description: 'Verifikasi bahwa pembayaran customer sudah diterima dan pesanan sedang diproses.' };
         return { title: isSelfPickup ? 'Tandai Siap Diambil' : 'Tandai Siap Dikirim', buttonLabel: isSelfPickup ? 'Tandai Siap Diambil ✓' : 'Tandai Siap Dikirim ✓', nextStatus: isSelfPickup ? 'READY_PICKUP' : 'READY_DELIVERY', requiresPhoto: false, description: isSelfPickup ? 'Sepatu sudah selesai, customer bisa mengambilnya.' : 'Sepatu sudah selesai, siap untuk dikirim.' };
       case 'READY_PICKUP':
         return { title: 'Upload Bukti Pengambilan', buttonLabel: 'Konfirmasi Barang Diambil', nextStatus: 'SUDAH_DIAMBIL', requiresPhoto: true, photoField: 'delivery_photo', icon: <UserCheck size={24} color="#15803D" />, description: 'Upload foto bukti customer sudah mengambil sepatu.' };
@@ -413,11 +406,7 @@ const AdminOrderManagement = () => {
 
                       const getActionButtonLabel = (targetStatus) => {
                         switch (targetStatus) {
-                          case 'MENUNGGU_PENGANTARAN': return 'Konfirmasi Pembayaran';
-                          case 'WAITING_PICKUP':       return 'Jadwalkan Pickup';
-                          case 'BARANG_DITERIMA':      return 'Konfirmasi Diterima';
-                          case 'BARANG_DIAMBIL':       return 'Konfirmasi Sudah Dijemput';
-                          case 'PROCESSING':           return 'Mulai Proses';
+                          case 'PROCESSING':           return 'Konfirmasi Pembayaran';
                           case 'READY_PICKUP':         return 'Tandai Siap Diambil';
                           case 'READY_DELIVERY':       return 'Tandai Siap Dikirim';
                           case 'ON_DELIVERY':          return 'Mulai Antar';
@@ -438,17 +427,7 @@ const AdminOrderManagement = () => {
                         );
                       }
 
-                      if (order.status === 'PENDING') {
-                        return (
-                          <div style={{ 
-                            padding: '10px 16px', borderRadius: '12px', backgroundColor: '#FFFBEB', 
-                            color: '#D97706', fontSize: '0.85rem', fontWeight: 700, width: '100%', textAlign: 'center',
-                            border: '1px solid #FEF3C7'
-                          }}>
-                            ⏳ Menunggu User Konfirmasi Pembayaran
-                          </div>
-                        );
-                      }
+
 
                       return (
                         <>
@@ -648,19 +627,7 @@ const AdminOrderManagement = () => {
                   );
                 }
 
-                if (selectedOrder.status === 'PENDING') {
-                  return (
-                    <div style={{ background: 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)', padding: '20px', borderRadius: '16px', textAlign: 'center', border: '1.5px solid #FDE68A' }}>
-                      <div style={{ fontSize: '2rem', marginBottom: '8px' }}>⏳</div>
-                      <p style={{ margin: 0, fontWeight: 800, color: '#92400E', fontSize: '1rem' }}>
-                        Menunggu User Konfirmasi Pembayaran
-                      </p>
-                      <p style={{ margin: '8px 0 0', fontSize: '0.82rem', color: '#B45309' }}>
-                        Tombol verifikasi akan muncul setelah customer mengklik "Saya Sudah Bayar".
-                      </p>
-                    </div>
-                  );
-                }
+
 
                 if (!action) return null;
 

@@ -69,8 +69,6 @@ export const getStatusFlow = (order) => {
     // Case A
     return [
       'MENUNGGU_VERIFIKASI',
-      'MENUNGGU_PENGANTARAN',
-      'BARANG_DITERIMA',
       'PROCESSING',
       'READY_PICKUP',
       'SUDAH_DIAMBIL',
@@ -82,8 +80,6 @@ export const getStatusFlow = (order) => {
     // Case B
     return [
       'MENUNGGU_VERIFIKASI',
-      'MENUNGGU_PENGANTARAN',
-      'BARANG_DITERIMA',
       'PROCESSING',
       'READY_DELIVERY',
       'ON_DELIVERY',
@@ -96,8 +92,6 @@ export const getStatusFlow = (order) => {
     // Case C
     return [
       'MENUNGGU_VERIFIKASI',
-      'WAITING_PICKUP',
-      'BARANG_DIAMBIL',
       'PROCESSING',
       'READY_PICKUP',
       'SUDAH_DIAMBIL',
@@ -108,8 +102,6 @@ export const getStatusFlow = (order) => {
   // Case D — Pickup + Delivery (default)
   return [
     'MENUNGGU_VERIFIKASI',
-    'WAITING_PICKUP',
-    'BARANG_DIAMBIL',
     'PROCESSING',
     'READY_DELIVERY',
     'ON_DELIVERY',

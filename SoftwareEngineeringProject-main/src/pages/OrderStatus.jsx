@@ -229,7 +229,7 @@ const DetailSheet = ({ order, onClose, onImageClick }) => {
                 {[
                   { photo: order.pickup_photo, time: order.pickup_photo_time, label: '📸 Bukti Penjemputan' },
                   { photo: order.received_photo, time: order.received_photo_time, label: '📸 Diterima di Toko' },
-                  { photo: order.delivery_photo, time: order.delivery_photo_time, label: '📸 Bukti Pengantaran' },
+                  { photo: order.delivery_photo, time: order.delivery_photo_time, label: order.returnMethod === 'SELF_PICKUP' ? '📸 Bukti Pengambilan' : '📸 Bukti Pengantaran' },
                 ].filter(p => p.photo).map((p, i) => (
                   <div key={i} style={{ background: '#f8fafc', border: '1px solid #f0f0f0', borderRadius: 14, padding: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>

@@ -162,22 +162,13 @@ const AdminDashboard = () => {
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    {isPending ? (
-                      <div style={{
-                        flex: 2, padding: '9px', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#f8fafc',
-                        fontSize: 12, fontWeight: 700, textAlign: 'center', color: '#94a3b8'
-                      }}>
-                        ⏳ Menunggu User Bayar
-                      </div>
-                    ) : (
                       <button onClick={() => handleStatusAction(o.order_id, o.status)}
                         style={{
-                          flex: 2, padding: '9px', borderRadius: 10, border: 'none', background: isVerifikasi ? '#d97706' : '#2563eb',
+                          flex: 2, padding: '9px', borderRadius: 10, border: 'none', background: (isVerifikasi || isPending) ? '#d97706' : '#2563eb',
                           color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer'
                         }}>
-                        {isVerifikasi ? '✓ Verifikasi' : '▶ Proses'}
+                        {(isVerifikasi || isPending) ? '✓ Verifikasi' : '▶ Proses'}
                       </button>
-                    )}
                     <button onClick={() => navigate('/admin/orders')}
                       style={{ flex: 1, padding: '9px', borderRadius: 10, border: '1.5px solid #e2e8f0', background: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#374151' }}>
                       Detail

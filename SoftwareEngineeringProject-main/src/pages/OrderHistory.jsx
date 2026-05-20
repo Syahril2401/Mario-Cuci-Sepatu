@@ -419,7 +419,7 @@ const OrderHistory = () => {
                     {selectedOrder.delivery_photo && (
                       <div style={{ border: '1px solid #F1F5F9', padding: '12px', borderRadius: '16px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#064058' }}>📸 Bukti Pengantaran</p>
+                          <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#064058' }}>{selectedOrder.returnMethod === 'SELF_PICKUP' ? '📸 Bukti Pengambilan' : '📸 Bukti Pengantaran'}</p>
                           {selectedOrder.delivery_photo_time && <span style={{ fontSize: '0.7rem', color: '#94A3B8' }}>{new Date(selectedOrder.delivery_photo_time).toLocaleString('id-ID')}</span>}
                         </div>
                         <img src={selectedOrder.delivery_photo} alt="Delivery Proof" style={{ width: '100%', borderRadius: '12px', height: '180px', objectFit: 'cover', cursor: 'pointer' }} onClick={() => window.open(selectedOrder.delivery_photo, '_blank')} />
