@@ -117,13 +117,26 @@ const Payment = () => {
                </div>
             </div>
 
-            <button 
-              className="btn-primary" 
-              style={{ width: '100%', borderRadius: '14px', padding: '14px', fontWeight: 800, fontSize: '1rem' }}
-              onClick={() => navigate('/home')}
-            >
-              Kembali ke Beranda
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button 
+                className="btn-primary" 
+                style={{ width: '100%', borderRadius: '14px', padding: '14px', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: '#25D366', color: 'white', border: 'none' }}
+                onClick={() => {
+                  const text = `Halo Admin, saya sudah melakukan pembayaran untuk pesanan dengan Order ID: ${formatOrderId(order)}. Mohon segera diverifikasi.`;
+                  window.open(`https://wa.me/6281233981688?text=${encodeURIComponent(text)}`, '_blank');
+                  navigate('/home');
+                }}
+              >
+                Konfirmasi via WhatsApp
+              </button>
+              
+              <button 
+                style={{ width: '100%', borderRadius: '14px', padding: '14px', fontWeight: 700, fontSize: '0.95rem', backgroundColor: '#F1F5F9', color: '#475569', border: 'none', cursor: 'pointer' }}
+                onClick={() => navigate('/home')}
+              >
+                Kembali ke Beranda
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -150,10 +163,10 @@ const Payment = () => {
 
       <div className="page-container" style={{ maxWidth: '480px', margin: '0 auto' }}>
         
-        {/* Verification / Success Pop-up Modal (Limited to frame) */}
-        {(isSuccess || error) && (
+        {/* Error Modal */}
+        {error && !isSuccess && (
           <div className="modal-overlay open" style={{ 
-            position: 'absolute', // Limited to relative parent
+            position: 'absolute',
             backdropFilter: 'blur(6px)', zIndex: 100,
             backgroundColor: 'rgba(0, 0, 0, 0.4)'
           }}>
@@ -162,29 +175,17 @@ const Payment = () => {
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)',
               backgroundColor: 'white'
             }}>
-              <div style={{ backgroundColor: '#F0FDF4', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
-                <ShieldCheck size={48} color="#22C55E" />
+              <div style={{ backgroundColor: '#FEF2F2', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
+                <AlertCircle size={48} color="#EF4444" />
               </div>
-              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1E293B', marginBottom: '8px' }}>Konfirmasi Terkirim!</h3>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1E293B', marginBottom: '8px' }}>Terjadi Kesalahan</h3>
               <p style={{ color: '#64748B', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '24px' }}>
-                Terima kasih! Bukti pembayaran Anda telah kami terima dan sedang <strong>menunggu verifikasi oleh Admin</strong>.
+                {error}
               </p>
-              
-              <div style={{ backgroundColor: '#F8FAFC', borderRadius: '16px', padding: '16px', marginBottom: '24px', border: '1px solid #E2E8F0', textAlign: 'left' }}>
-                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                   <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Order ID:</span>
-                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E293B' }}>{formatOrderId(order)}</span>
-                 </div>
-                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                   <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Status:</span>
-                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#059669' }}>Menunggu Verifikasi</span>
-                 </div>
-              </div>
-
               <button 
                 className="btn-primary" 
                 style={{ width: '100%', borderRadius: '14px', padding: '14px', fontWeight: 800, fontSize: '1rem' }}
-                onClick={() => navigate('/home')}
+                onClick={() => setError('')}
               >
                 Tutup
               </button>

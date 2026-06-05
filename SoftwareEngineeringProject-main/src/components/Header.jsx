@@ -35,7 +35,11 @@ const Header = ({ toggleDrawer }) => {
 
   const handleSettings = () => {
     setDropdownOpen(false);
-    navigate('/profile');
+    if (user?.role === 'admin') {
+      navigate('/admin/settings');
+    } else {
+      navigate('/profile');
+    }
   };
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);

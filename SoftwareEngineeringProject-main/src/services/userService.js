@@ -16,5 +16,13 @@ export const userService = {
     } catch (error) {
       throw error;
     }
+  },
+  updatePassword: async (data) => {
+    try {
+      const response = await api.put('/users/password', data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 };

@@ -5,5 +5,6 @@ const { verifyToken } = require('../middlewares/authMiddleware');
 
 router.get('/profile', verifyToken, userController.getProfile);
 router.put('/profile', verifyToken, userController.updateProfile);
+router.put('/password', verifyToken, userController.updatePassword);
 
 module.exports = router;

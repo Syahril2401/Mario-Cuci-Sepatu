@@ -221,7 +221,7 @@ const AdminOrderManagement = () => {
     { value: 'BARANG_DITERIMA', label: 'Barang Sudah Diterima' },
     { value: 'PROCESSING', label: 'Sedang Diproses' },
     { value: 'READY_PICKUP', label: 'Siap Dikirim/Ambil' },
-    { value: 'SUDAH_DIAMBIL', label: 'Sudah Dikirim/Diambil' },
+    { value: 'SUDAH_DIAMBIL', label: 'Sudah Dikirim/Diambil' }, 
     { value: 'FINISHED', label: 'Selesai' },
     { value: 'CANCELLED', label: 'Dibatalkan' }
   ];

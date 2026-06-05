@@ -50,6 +50,19 @@ const User = {
     } catch (error) {
       throw error;
     }
+  },
+
+  // Update password user
+  updatePassword: async (id, newPassword) => {
+    try {
+      const [result] = await db.execute(
+        'UPDATE users SET password = ? WHERE user_id = ?',
+        [newPassword, id]
+      );
+      return result;
+    } catch (error) {
+      throw error;
+    }
   }
 };
 

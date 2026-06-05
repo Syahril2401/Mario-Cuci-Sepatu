@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Home, User, Clock, History, Mail, LogOut, X, Phone,
   Settings, ShoppingBag, BarChart2, Package, Tag,
-  ChevronRight, TrendingUp, FileText, Wrench
+  ChevronRight, TrendingUp, FileText, Wrench, Edit3
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import './Drawer.css';
@@ -37,7 +37,8 @@ const ADMIN_GROUPS = [
       { name: 'Kelola Pesanan', path: '/admin/orders', icon: <Package size={20} color="#064058" />, sub: 'Semua pesanan' },
       { name: 'Promo', path: '/admin/promos', icon: <Tag size={20} color="#064058" />, sub: 'Manajemen promo' },
       { name: 'Laporan', path: '/admin/report', icon: <FileText size={20} color="#064058" />, sub: 'Laporan & statistik' },
-      { name: 'Edit Landing', path: '/admin/landing', icon: <Settings size={20} color="#064058" />, sub: 'Pengaturan halaman utama' },
+      { name: 'Edit Landing', path: '/admin/landing', icon: <Edit3 size={20} color="#064058" />, sub: 'Pengaturan halaman utama' },
+      { name: 'Pengaturan', path: '/admin/settings', icon: <Settings size={20} color="#064058" />, sub: 'Preferensi & akun' },
     ],
   },
 ];

@@ -15,12 +15,12 @@ import './Landing.css';
 import logo from '../assets/logo.png';
 
 // Import Carousel Images
-import imgAfter from '../assets/carousel/after.png';
-import imgBefore from '../assets/carousel/before.png';
-import imgProcess from '../assets/carousel/process.png';
-import imgDetail from '../assets/carousel/detail.png';
-import imgPackaging from '../assets/carousel/packaging.png';
-import beforeAfterImg from '../assets/before_after.png';
+import imgAfter from '../assets/carousel/after.webp';
+import imgBefore from '../assets/carousel/before.webp';
+import imgProcess from '../assets/carousel/process.webp';
+import imgDetail from '../assets/carousel/detail.webp';
+import imgPackaging from '../assets/carousel/packaging.webp';
+import beforeAfterImg from '../assets/before_after.webp';
 
 const CAROUSEL_ITEMS = [
   { img: imgAfter, label: "Hasil Maksimal", icon: <Sparkles size={14} /> },
@@ -121,7 +121,7 @@ const HeroCarousel = ({ items }) => {
             <div className="carousel-label">
               {item.icon || getIcon(item.iconName)} {item.label}
             </div>
-            <img src={item.img} alt={item.label} className="carousel-img" />
+            <img src={item.img} alt={item.label} className="carousel-img" fetchpriority={idx === 0 ? "high" : "auto"} loading={idx === 0 ? "eager" : "lazy"} decoding="async" />
           </div>
         ))}
       </div>
@@ -152,7 +152,7 @@ const LandingNavbar = ({ onMenuOpen, scrolled }) => {
         <Menu size={24} />
       </button>
       <div className="landing-logo">
-        <img src={logo} alt="Mario Cuci Sepatu" />
+        <img src={logo} alt="Mario Cuci Sepatu" width="40" height="40" />
         <span className="landing-brand-name">Mario Cuci Sepatu</span>
       </div>
     </nav>
@@ -373,7 +373,7 @@ const Landing = () => {
               return (
                 <div key={service.service_id} className="service-card-premium premium-card" onClick={() => navigate('/login')}>
                   <div className="card-img-wrapper">
-                    <img src={service.image} alt={service.serviceName} className="card-img" />
+                    <img src={service.image} alt={service.serviceName} className="card-img" loading="lazy" decoding="async" />
                     {activePromo ? (
                       <div className="card-badge" style={{ backgroundColor: '#F59E0B' }}>PROMO {activePromo.percentage}%</div>
                     ) : (
@@ -411,7 +411,7 @@ const Landing = () => {
           <p className="section-subtitle-premium">{config?.hasilNyata?.subtitle || 'Bukan sekedar bersih, tapi kembali seperti baru.'}</p>
 
           <div className="comparison-container">
-            <img src={config?.hasilNyata?.img || beforeAfterImg} alt="Before After" style={{ width: '100%', display: 'block' }} />
+            <img src={config?.hasilNyata?.img || beforeAfterImg} alt="Before After" style={{ width: '100%', display: 'block' }} loading="lazy" decoding="async" />
           </div>
         </section>
 

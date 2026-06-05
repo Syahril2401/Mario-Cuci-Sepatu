@@ -290,7 +290,7 @@ const Home = () => {
             <div key={service.service_id} className="svc-card" onClick={() => navigate('/checkout', { state: { service } })}>
               <div className="svc-img-wrap">
                 {service.image
-                  ? <img src={service.image} alt={service.serviceName} className="svc-img" />
+                  ? <img src={service.image} alt={service.serviceName} className="svc-img" loading="lazy" decoding="async" />
                   : <div className="svc-img-placeholder"><span>👟</span></div>
                 }
                 {activePromo && <div className="svc-badge promo">🔥 {activePromo.percentage}% OFF</div>}
@@ -356,7 +356,7 @@ const Home = () => {
         <div className="footer-content">
           {/* Logo centered */}
           <div className="footer-logo-center">
-            <img src={logo} alt="Mario Cuci Sepatu" className="footer-logo-img" />
+            <img src={logo} alt="Mario Cuci Sepatu" className="footer-logo-img" loading="lazy" decoding="async" />
           </div>
 
           <h3 className="footer-brand-title">Mario Cuci Sepatu</h3>

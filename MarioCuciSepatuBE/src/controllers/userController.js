@@ -57,3 +57,39 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+const bcrypt = require('bcrypt');
+
+exports.updatePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Password saat ini dan password baru wajib diisi' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // We need the user's current password hash. findById might not return it based on the query.
+    // Let's use findByEmail since it selects *
+    const fullUser = await User.findByEmail(user.email);
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, fullUser.password);
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: 'Password saat ini salah' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await User.updatePassword(req.user.id, hashedPassword);
+
+    res.json({ message: 'Password berhasil diubah' });
+  } catch (error) {
+    console.error('Error updating password:', error);
+    res.status(500).json({ message: 'Terjadi kesalahan pada server saat mengubah password' });
+  }
+};
