@@ -8,11 +8,11 @@ import './Pages.css';
 const Payment = () => {
   const { order_id } = useParams();
   const navigate = useNavigate();
-  
+
   const [order, setOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [showStorageModal, setShowStorageModal] = useState(false);
@@ -42,7 +42,7 @@ const Payment = () => {
 
   const handleConfirm = async () => {
     setIsProcessing(true);
-    
+
     try {
       const updatedOrder = {
         ...order,
@@ -78,12 +78,12 @@ const Payment = () => {
     return (
       <div className="payment-page" style={{ backgroundColor: '#F8FAFC', minHeight: '100vh', paddingBottom: '40px' }}>
         {/* Header Navbar */}
-        <div style={{ 
-          position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'white', 
-          padding: '16px 20px', display: 'flex', alignItems: 'center', 
-          boxShadow: '0 2px 10px rgba(0,0,0,0.04)', marginBottom: '20px' 
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'white',
+          padding: '16px 20px', display: 'flex', alignItems: 'center',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.04)', marginBottom: '20px'
         }}>
-          <button 
+          <button
             onClick={() => navigate('/home')}
             style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           >
@@ -94,7 +94,7 @@ const Payment = () => {
 
         {/* Success Pop-up Modal */}
         <div className="modal-overlay open" style={{ backdropFilter: 'blur(6px)', zIndex: 100 }}>
-          <div className="modal-content fade-in" style={{ 
+          <div className="modal-content fade-in" style={{
             borderRadius: '28px', padding: '32px 24px', maxWidth: '340px', textAlign: 'center',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)'
           }}>
@@ -105,21 +105,21 @@ const Payment = () => {
             <p style={{ color: '#64748B', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '24px' }}>
               Terima kasih! Bukti pembayaran Anda telah kami terima dan sedang <strong>menunggu verifikasi oleh Admin</strong>.
             </p>
-            
+
             <div style={{ backgroundColor: '#F8FAFC', borderRadius: '16px', padding: '16px', marginBottom: '24px', border: '1px solid #E2E8F0', textAlign: 'left' }}>
-               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                 <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Order ID:</span>
-                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E293B' }}>{formatOrderId(order)}</span>
-               </div>
-               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                 <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Status:</span>
-                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#059669' }}>Menunggu Verifikasi</span>
-               </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Order ID:</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E293B' }}>{formatOrderId(order)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Status:</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#059669' }}>Menunggu Verifikasi</span>
+              </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <button 
-                className="btn-primary" 
+              <button
+                className="btn-primary"
                 style={{ width: '100%', borderRadius: '14px', padding: '14px', fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', backgroundColor: '#25D366', color: 'white', border: 'none' }}
                 onClick={() => {
                   const text = `Halo Admin, saya sudah melakukan pembayaran untuk pesanan dengan Order ID: ${formatOrderId(order)}. Mohon segera diverifikasi.`;
@@ -129,8 +129,8 @@ const Payment = () => {
               >
                 Konfirmasi via WhatsApp
               </button>
-              
-              <button 
+
+              <button
                 style={{ width: '100%', borderRadius: '14px', padding: '14px', fontWeight: 700, fontSize: '0.95rem', backgroundColor: '#F1F5F9', color: '#475569', border: 'none', cursor: 'pointer' }}
                 onClick={() => navigate('/home')}
               >
@@ -145,14 +145,14 @@ const Payment = () => {
 
   return (
     <div className="payment-page" style={{ backgroundColor: '#F8FAFC', minHeight: '100vh', paddingBottom: '40px', position: 'relative', overflow: 'hidden' }}>
-      
+
       {/* Header Navbar */}
-      <div style={{ 
-        position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'white', 
-        padding: '16px 20px', display: 'flex', alignItems: 'center', 
-        boxShadow: '0 2px 10px rgba(0,0,0,0.04)', marginBottom: '20px' 
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'white',
+        padding: '16px 20px', display: 'flex', alignItems: 'center',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.04)', marginBottom: '20px'
       }}>
-        <button 
+        <button
           onClick={() => navigate(-1)}
           style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
         >
@@ -162,15 +162,15 @@ const Payment = () => {
       </div>
 
       <div className="page-container" style={{ maxWidth: '480px', margin: '0 auto' }}>
-        
+
         {/* Error Modal */}
         {error && !isSuccess && (
-          <div className="modal-overlay open" style={{ 
+          <div className="modal-overlay open" style={{
             position: 'absolute',
             backdropFilter: 'blur(6px)', zIndex: 100,
             backgroundColor: 'rgba(0, 0, 0, 0.4)'
           }}>
-            <div className="modal-content fade-in" style={{ 
+            <div className="modal-content fade-in" style={{
               borderRadius: '28px', padding: '32px 24px', maxWidth: '340px', textAlign: 'center',
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)',
               backgroundColor: 'white'
@@ -182,8 +182,8 @@ const Payment = () => {
               <p style={{ color: '#64748B', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '24px' }}>
                 {error}
               </p>
-              <button 
-                className="btn-primary" 
+              <button
+                className="btn-primary"
                 style={{ width: '100%', borderRadius: '14px', padding: '14px', fontWeight: 800, fontSize: '1rem' }}
                 onClick={() => setError('')}
               >
@@ -204,28 +204,28 @@ const Payment = () => {
           <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600, marginBottom: '2px' }}>{formatOrderId(order)}</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#1E293B' }}>{order.service || 'Service Layanan'}</h4>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#064058' }}>Rp {(order.total_price || order.totalPrice || 0).toLocaleString('id-ID')}</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#064058' }}>Rp {Number(order.total_price || order.totalPrice || 0).toLocaleString('id-ID')}</span>
           </div>
         </div>
 
         {/* QRIS Section */}
         <div className="card fade-in delay-3" style={{ padding: '24px', borderRadius: '16px', textAlign: 'center', marginBottom: '20px', backgroundColor: 'white', border: '1px solid #E2E8F0' }}>
           <h4 style={{ margin: '0 0 16px 0', fontSize: '0.9rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Scan QR Code</h4>
-          <div className="scale-in" style={{ 
+          <div className="scale-in" style={{
             backgroundColor: 'white', padding: '12px', borderRadius: '12px', border: '1px solid #F1F5F9',
             display: 'inline-block', margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
           }}>
-            <img 
-              src={qrisImage} 
-              alt="QRIS Code" 
-              style={{ width: '100%', maxWidth: '220px', display: 'block' }} 
+            <img
+              src={qrisImage}
+              alt="QRIS Code"
+              style={{ width: '100%', maxWidth: '220px', display: 'block' }}
             />
           </div>
           <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
-             <span style={{ backgroundColor: '#F8FAFC', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, color: '#64748B', border: '1px solid #E2E8F0' }}>GOPAY</span>
-             <span style={{ backgroundColor: '#F8FAFC', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, color: '#64748B', border: '1px solid #E2E8F0' }}>OVO</span>
-             <span style={{ backgroundColor: '#F8FAFC', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, color: '#64748B', border: '1px solid #E2E8F0' }}>DANA</span>
-             <span style={{ backgroundColor: '#F8FAFC', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, color: '#64748B', border: '1px solid #E2E8F0' }}>LINKAJA</span>
+            <span style={{ backgroundColor: '#F8FAFC', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, color: '#64748B', border: '1px solid #E2E8F0' }}>GOPAY</span>
+            <span style={{ backgroundColor: '#F8FAFC', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, color: '#64748B', border: '1px solid #E2E8F0' }}>OVO</span>
+            <span style={{ backgroundColor: '#F8FAFC', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, color: '#64748B', border: '1px solid #E2E8F0' }}>DANA</span>
+            <span style={{ backgroundColor: '#F8FAFC', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, color: '#64748B', border: '1px solid #E2E8F0' }}>LINKAJA</span>
           </div>
         </div>
 
@@ -252,11 +252,11 @@ const Payment = () => {
 
         {/* Action Button */}
         <div className="fade-in delay-5">
-          <button 
-            className="btn-primary btn-click-effect" 
-            style={{ 
-              width: '100%', height: '52px', borderRadius: '14px', 
-              fontSize: '1rem', fontWeight: 800, 
+          <button
+            className="btn-primary btn-click-effect"
+            style={{
+              width: '100%', height: '52px', borderRadius: '14px',
+              fontSize: '1rem', fontWeight: 800,
               boxShadow: '0 6px 20px rgba(6, 64, 88, 0.2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
             }}
@@ -275,7 +275,7 @@ const Payment = () => {
               </>
             )}
           </button>
-          
+
           <div style={{ textAlign: 'center', marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#059669', fontSize: '0.75rem', fontWeight: 700 }}>
               <ShieldCheck size={14} />

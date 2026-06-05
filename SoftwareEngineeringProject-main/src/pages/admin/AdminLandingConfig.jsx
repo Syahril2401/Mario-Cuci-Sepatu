@@ -185,6 +185,29 @@ const AdminLandingConfig = () => {
   return (
     <div className="admin-root" style={{ padding: 0, overflowX: 'hidden' }}>
       
+      {/* TOAST NOTIFICATION */}
+      <div style={{
+        position: 'fixed',
+        top: message ? '20px' : '-100px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 9999,
+        transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        background: '#dcfce7',
+        color: '#15803d',
+        padding: '12px 24px',
+        borderRadius: '12px',
+        fontWeight: 700,
+        fontSize: '14px',
+        boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px'
+      }}>
+        <Save size={18} />
+        {message}
+      </div>
+
       {/* HEADER STICKY */}
       <div className="adm-header" style={{ position: 'sticky', top: 0, zIndex: 10, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', padding: '16px 24px', borderBottom: '1px solid #e2e8f0', margin: 0, borderRadius: 0 }}>
         <div>
@@ -195,14 +218,6 @@ const AdminLandingConfig = () => {
           <button onClick={() => navigate('/admin/dashboard')} className="adm-btn" style={{ background: '#f1f5f9', color: '#475569', border: 'none', padding: '8px 16px', borderRadius: '10px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <ArrowLeft size={16} /> Batal
           </button>
-          <button onClick={handleSave} disabled={isSaving} className="adm-btn-primary" style={{ padding: '8px 16px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 6, border: 'none', cursor: 'pointer', background: 'var(--primary)', color: 'white', fontWeight: 700 }}>
-            <Save size={16} /> {isSaving ? 'Menyimpan...' : 'Simpan'}
-          </button>
-          {message && (
-            <span style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, fontSize: '13px', fontWeight: 700, color: '#15803d', background: '#dcfce7', padding: '8px 16px', borderRadius: '8px', whiteSpace: 'nowrap', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-              {message}
-            </span>
-          )}
         </div>
       </div>
 
@@ -215,7 +230,13 @@ const AdminLandingConfig = () => {
             <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: 'var(--primary)' }}>Edit Carousel Images:</h4>
             <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 10 }}>
               {config.carousel.map((item, i) => (
-                <div key={i} style={{ minWidth: 120, background: 'white', borderRadius: 8, padding: 8, border: '1px solid #e2e8f0' }}>
+                <div key={i} style={{ minWidth: 120, background: 'white', borderRadius: 8, padding: 8, border: '1px solid #e2e8f0', position: 'relative' }}>
+                  <button onClick={() => {
+                    const newCarousel = config.carousel.filter((_, idx) => idx !== i);
+                    setConfig(prev => ({ ...prev, carousel: newCarousel }));
+                  }} style={{ position: 'absolute', top: -5, right: -5, background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10, padding: 0 }}>
+                    <Trash2 size={12} />
+                  </button>
                   <div style={{ width: '100%', height: 70, background: '#f1f5f9', borderRadius: 6, marginBottom: 8, overflow: 'hidden', position: 'relative' }}>
                     {item.img ? <img src={item.img} alt="slide" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <ImageIcon size={20} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#94a3b8' }} />}
                   </div>
@@ -227,6 +248,11 @@ const AdminLandingConfig = () => {
                   <InlineInput value={item.img} onChange={val => handleCarouselChange(i, 'img', val)} placeholder="URL" style={{ fontSize: 10, padding: 4, marginTop: 4, background: '#f8fafc' }} />
                 </div>
               ))}
+              <div style={{ minWidth: 120, background: 'rgba(255,255,255,0.5)', borderRadius: 8, padding: 8, border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => {
+                setConfig(prev => ({ ...prev, carousel: [...prev.carousel, { label: 'Label Baru', img: '', iconName: 'Sparkles' }] }));
+              }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>+ Tambah</span>
+              </div>
             </div>
           </div>
 
@@ -334,6 +360,26 @@ const AdminLandingConfig = () => {
           <p className="about-text">
             <InlineTextarea value={config.aboutUs.description} onChange={val => handleChange('aboutUs', 'description', val)} style={{ textAlign: 'center' }} rows={4} />
           </p>
+
+          <div className="hero-stats" style={{ display: 'flex', justifyContent: 'center', gap: 32, marginTop: 24 }}>
+            {(config.aboutUs.stats || [
+              { val: "2+", label: "Tahun Pengalaman" },
+              { val: "200+", label: "Sepatu Selesai" }
+            ]).map((stat, i) => (
+              <div key={i} className="stat-item" style={{ background: 'rgba(255,255,255,0.7)', padding: '10px 20px', borderRadius: 12, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <InlineInput value={stat.val} onChange={val => {
+                  const newStats = [...(config.aboutUs.stats || [{val:"2+",label:"Tahun Pengalaman"},{val:"200+",label:"Sepatu Selesai"}])];
+                  newStats[i] = { ...newStats[i], val };
+                  handleChange('aboutUs', 'stats', newStats);
+                }} style={{ fontWeight: 900, color: 'var(--primary)', fontSize: '1.25rem', textAlign: 'center', background: 'transparent' }} />
+                <InlineInput value={stat.label} onChange={val => {
+                  const newStats = [...(config.aboutUs.stats || [{val:"2+",label:"Tahun Pengalaman"},{val:"200+",label:"Sepatu Selesai"}])];
+                  newStats[i] = { ...newStats[i], label: val };
+                  handleChange('aboutUs', 'stats', newStats);
+                }} style={{ fontSize: '0.75rem', color: 'var(--text-gray)', fontWeight: 600, textAlign: 'center', background: 'transparent' }} />
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* LOCATION SECTION */}
@@ -413,6 +459,34 @@ const AdminLandingConfig = () => {
         </footer>
 
       </div>
+
+      <button 
+        onClick={handleSave} 
+        disabled={isSaving}
+        style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '20px',
+          width: '56px',
+          height: '56px',
+          background: 'var(--primary)',
+          border: 'none',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          boxShadow: '0 8px 24px rgba(6, 64, 88, 0.4)',
+          zIndex: 2000,
+          cursor: isSaving ? 'not-allowed' : 'pointer',
+          transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+          opacity: isSaving ? 0.7 : 1
+        }}
+        onMouseEnter={e => !isSaving && (e.currentTarget.style.transform = 'scale(1.1) translateY(-5px)')}
+        onMouseLeave={e => !isSaving && (e.currentTarget.style.transform = 'scale(1) translateY(0)')}
+      >
+        <Save size={24} />
+      </button>
     </div>
   );
 };

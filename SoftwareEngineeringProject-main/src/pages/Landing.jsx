@@ -33,7 +33,7 @@ const CAROUSEL_ITEMS = [
 import { WhatsappIcon, InstagramIcon } from '../components/Icons';
 
 const getIcon = (name) => {
-  switch(name) {
+  switch (name) {
     case 'Sparkles': return <Sparkles size={14} />;
     case 'Zap': return <Zap size={14} />;
     case 'Timer': return <Timer size={14} />;
@@ -272,7 +272,7 @@ const Landing = () => {
   const handleScroll = (e) => {
     const scrollTop = e.target.scrollTop;
     setScrolled(scrollTop > 10);
-    
+
     const hasilNyataSection = document.getElementById('hasil-nyata');
     if (hasilNyataSection && scrollTop > hasilNyataSection.offsetTop - 200) {
       setShowBackToTop(true);
@@ -424,8 +424,8 @@ const Landing = () => {
 
           <div className="hero-stats">
             {(config?.aboutUs?.stats || [
-              { val: "5+", label: "Tahun Pengalaman" },
-              { val: "10k+", label: "Sepatu Selesai" }
+              { val: "2+", label: "Tahun Pengalaman" },
+              { val: "200+", label: "Sepatu Selesai" }
             ]).map((stat, i) => (
               <div key={i} className="stat-item">
                 <span className="stat-val">{stat.val}</span>

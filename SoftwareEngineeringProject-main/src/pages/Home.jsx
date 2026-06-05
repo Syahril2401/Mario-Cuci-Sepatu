@@ -161,9 +161,10 @@ const Home = () => {
         ]);
         setServices(servicesRes.data?.data || servicesRes.data || []);
         setPromos(promosRes.data || []);
-        setActiveOrders((ordersRes.data || []).filter(o =>
-          o.status !== 'FINISHED' && o.status !== 'CANCELLED' && o.status !== 'RECEIVED' && o.status !== 'SUDAH_DIAMBIL'
-        ));
+        setActiveOrders((ordersRes.data || []).filter(o => {
+          const s = (o.status || '').toUpperCase();
+          return !['FINISHED', 'CANCELLED', 'COMPLETED', 'RECEIVED', 'SUDAH_DIAMBIL'].includes(s);
+        }));
       } catch (err) {
         console.error('Fetch error:', err);
         setError('Gagal memuat layanan. Coba refresh halaman.');

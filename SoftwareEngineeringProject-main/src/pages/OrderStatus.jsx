@@ -252,17 +252,18 @@ const DetailSheet = ({ order, onClose, onImageClick, onUploadProof, onFinish }) 
           </section>
 
           {/* All Proof Photos */}
-          {(order.pickup_photo || order.received_photo || order.proof_image || order.delivery_photo) && (
+          {(order.photo || order.pickup_photo || order.received_photo || order.proof_image || order.delivery_photo) && (
             <section style={{ marginBottom: 20 }}>
               <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 800, color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Camera size={15} color="#064058" /> Bukti Foto
               </h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
-                  { photo: order.pickup_photo, time: order.pickup_photo_time, label: '📸 Bukti Penjemputan' },
-                  { photo: order.received_photo, time: order.received_photo_time, label: '📸 Diterima di Toko' },
+                  { photo: order.photo, time: order.created_at || order.updated_at, label: '📸 Saat Checkout' },
+                  { photo: order.pickup_photo, time: order.pickup_photo_time || order.updated_at, label: '📸 Bukti Penjemputan' },
+                  { photo: order.received_photo, time: order.received_photo_time || order.updated_at, label: '📸 Diterima di Toko' },
                   { photo: order.proof_image, time: order.proof_image_time || order.updated_at, label: '📸 Bukti Selesai Cuci' },
-                  { photo: order.delivery_photo, time: order.delivery_photo_time, label: order.returnMethod === 'SELF_PICKUP' ? '📸 Bukti Pengambilan' : '📸 Bukti Pengantaran' },
+                  { photo: order.delivery_photo, time: order.delivery_photo_time || order.updated_at, label: order.returnMethod === 'SELF_PICKUP' ? '📸 Bukti Pengambilan' : '📸 Bukti Pengantaran' },
                 ].filter(p => p.photo).map((p, i) => (
                   <div key={i} style={{ background: '#f8fafc', border: '1px solid #f0f0f0', borderRadius: 14, padding: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>

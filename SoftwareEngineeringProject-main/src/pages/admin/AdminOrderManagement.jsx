@@ -141,7 +141,6 @@ const AdminOrderManagement = () => {
         status: nextStatus,
         [photoField]: tempProofs[photoField],
         [`${photoField}_time`]: now,
-        proof_image: tempProofs[photoField],
         note: tempNote || undefined
       };
       try {
