@@ -24,22 +24,22 @@ export const formatOrderId = (order) => {
 
 export const STATUS_LABELS = {
   // --- Common ---
-  "MENUNGGU_VERIFIKASI": "Menunggu Verifikasi Pembayaran",
+  "WAITING_VERIFICATION": "Menunggu Verifikasi Pembayaran",
   "PROCESSING": "Sedang Diproses",
   "FINISHED": "Selesai",
   "CANCELLED": "Dibatalkan",
 
   // --- Self Drop ---
-  "MENUNGGU_PENGANTARAN": "Menunggu Pengantaran Barang",
-  "BARANG_DITERIMA": "Barang Sudah Diterima",
+  "WAITING_DROP_OFF": "Menunggu Pengantaran Barang",
+  "STORE_RECEIVED": "Barang Sudah Diterima",
 
   // --- Pickup by Admin ---
   "WAITING_PICKUP": "Menunggu Pickup",
-  "BARANG_DIAMBIL": "Barang Sudah Diambil Admin",
+  "PICKED_UP_BY_ADMIN": "Barang Sudah Diambil Admin",
 
   // --- Return: Self Pickup ---
   "READY_PICKUP": "Siap Dikirim/Ambil",
-  "SUDAH_DIAMBIL": "Sudah Dikirim/Diambil",
+  "CUSTOMER_PICKED_UP": "Sudah Dikirim/Diambil",
 
   // --- Return: Delivery ---
   "READY_DELIVERY": "Siap Dikirim",
@@ -47,6 +47,7 @@ export const STATUS_LABELS = {
   "RECEIVED": "Sudah Diterima",
 
   // --- Legacy compatibility ---
+  "AWAITING_DROP_OFF": "Menunggu Pengantaran Barang",
   "ANTRI": "Menunggu Pengantaran Barang",
   "PENDING": "Belum Bayar",
   "READY": "Siap",
@@ -54,20 +55,21 @@ export const STATUS_LABELS = {
 };
 
 export const STATUS_DESCRIPTIONS = {
-  "MENUNGGU_VERIFIKASI": "Pesanan dibuat. Menunggu verifikasi pembayaran oleh admin.",
-  "MENUNGGU_PENGANTARAN": "Silakan antar sepatu Anda ke toko kami di Northwest Lake, Babat Jerawat.",
-  "BARANG_DITERIMA": "Sepatu Anda sudah diterima di toko dan akan segera diproses.",
+  "WAITING_VERIFICATION": "Pesanan dibuat. Menunggu verifikasi pembayaran oleh admin.",
+  "WAITING_DROP_OFF": "Silakan antar sepatu Anda ke toko kami di Northwest Lake, Babat Jerawat.",
+  "STORE_RECEIVED": "Sepatu Anda sudah diterima di toko dan akan segera diproses.",
   "WAITING_PICKUP": "Admin akan segera menjemput sepatu Anda di lokasi yang ditentukan.",
-  "BARANG_DIAMBIL": "Admin sudah menjemput sepatu Anda. Sedang dalam perjalanan ke toko.",
+  "PICKED_UP_BY_ADMIN": "Admin sudah menjemput sepatu Anda. Sedang dalam perjalanan ke toko.",
   "PROCESSING": "Sepatu sedang dibersihkan dan dirawat oleh tim profesional kami.",
   "READY_PICKUP": "Sepatu Anda sudah bersih! Silakan datang ke toko untuk mengambilnya.",
-  "SUDAH_DIAMBIL": "Sepatu sudah diambil.",
+  "CUSTOMER_PICKED_UP": "Sepatu sudah diambil.",
   "READY_DELIVERY": "Pesanan sudah selesai dan siap dikirim ke alamat Anda.",
   "ON_DELIVERY": "Kurir sedang menuju lokasi Anda. Harap siap menerima paket.",
   "RECEIVED": "Sepatu telah diterima. Terima kasih sudah menggunakan Mario Cuci Sepatu!",
   "FINISHED": "Pesanan selesai. Terima kasih! Semoga sepatu Anda tampil kinclong! 👟",
   "CANCELLED": "Pesanan ini telah dibatalkan.",
   // legacy
+  "AWAITING_DROP_OFF": "Silakan antar sepatu Anda ke toko kami.",
   "ANTRI": "Silakan antar sepatu Anda ke toko kami.",
   "PENDING": "Pesanan dibuat. Menunggu verifikasi pembayaran.",
   "READY": "Pesanan siap.",
@@ -88,12 +90,12 @@ export const getStatusFlow = (order) => {
   if (isSelfDrop && isSelfPickup) {
     // Case A
     return [
-      'MENUNGGU_VERIFIKASI',
-      'MENUNGGU_PENGANTARAN',
-      'BARANG_DITERIMA',
+      'WAITING_VERIFICATION',
+      'WAITING_DROP_OFF',
+      'STORE_RECEIVED',
       'PROCESSING',
       'READY_PICKUP',
-      'SUDAH_DIAMBIL',
+      'CUSTOMER_PICKED_UP',
       'FINISHED',
     ];
   }
@@ -101,9 +103,9 @@ export const getStatusFlow = (order) => {
   if (isSelfDrop && !isSelfPickup) {
     // Case B
     return [
-      'MENUNGGU_VERIFIKASI',
-      'MENUNGGU_PENGANTARAN',
-      'BARANG_DITERIMA',
+      'WAITING_VERIFICATION',
+      'WAITING_DROP_OFF',
+      'STORE_RECEIVED',
       'PROCESSING',
       'READY_DELIVERY',
       'ON_DELIVERY',
@@ -115,21 +117,21 @@ export const getStatusFlow = (order) => {
   if (!isSelfDrop && isSelfPickup) {
     // Case C
     return [
-      'MENUNGGU_VERIFIKASI',
+      'WAITING_VERIFICATION',
       'WAITING_PICKUP',
-      'BARANG_DIAMBIL',
+      'PICKED_UP_BY_ADMIN',
       'PROCESSING',
       'READY_PICKUP',
-      'SUDAH_DIAMBIL',
+      'CUSTOMER_PICKED_UP',
       'FINISHED',
     ];
   }
 
   // Case D — Pickup + Delivery (default)
   return [
-    'MENUNGGU_VERIFIKASI',
+    'WAITING_VERIFICATION',
     'WAITING_PICKUP',
-    'BARANG_DIAMBIL',
+    'PICKED_UP_BY_ADMIN',
     'PROCESSING',
     'READY_DELIVERY',
     'ON_DELIVERY',
@@ -145,14 +147,14 @@ export const canUpdateStatus = (order, nextStatus) => {
   const currentStatus = order.status.toUpperCase();
   const targetStatus = nextStatus.toUpperCase();
 
-  // Normalize legacy PENDING to MENUNGGU_VERIFIKASI
-  const normalizedCurrent = currentStatus === 'PENDING' ? 'MENUNGGU_VERIFIKASI' : currentStatus;
+  // Normalize legacy PENDING to WAITING_VERIFICATION
+  const normalizedCurrent = currentStatus === 'PENDING' ? 'WAITING_VERIFICATION' : currentStatus;
 
   const currentIndex = flow.indexOf(normalizedCurrent);
   const nextIndex = flow.indexOf(targetStatus);
 
   // Legacy compatibility
-  if (currentStatus === 'PENDING PAYMENT' && targetStatus === 'MENUNGGU_PENGANTARAN') return true;
+  if (currentStatus === 'PENDING PAYMENT' && targetStatus === 'WAITING_DROP_OFF') return true;
   if (currentStatus === 'COMPLETED' && targetStatus === 'FINISHED') return false;
 
   // Allow transitions only to the next step in the flow
@@ -163,15 +165,20 @@ export const getStatusColor = (status) => {
   switch (status?.toUpperCase()) {
     case 'PENDING':
       return { bg: '#64748B', text: '#FFFFFF', border: '#475569' }; // Solid Slate
+    case 'WAITING_VERIFICATION':
     case 'MENUNGGU_VERIFIKASI':
       return { bg: '#F97316', text: '#FFFFFF', border: '#C2410C' }; // Solid Orange
+    case 'WAITING_DROP_OFF':
     case 'MENUNGGU_PENGANTARAN':
+    case 'AWAITING_DROP_OFF':
     case 'ANTRI':
       return { bg: '#3B82F6', text: '#FFFFFF', border: '#2563EB' }; // Solid Light Blue
+    case 'STORE_RECEIVED':
     case 'BARANG_DITERIMA':
       return { bg: '#2563EB', text: '#FFFFFF', border: '#1D4ED8' }; // Solid Blue
     case 'WAITING_PICKUP':
       return { bg: '#EAB308', text: '#FFFFFF', border: '#CA8A04' }; // Solid Yellow
+    case 'PICKED_UP_BY_ADMIN':
     case 'BARANG_DIAMBIL':
       return { bg: '#EA580C', text: '#FFFFFF', border: '#9A3412' }; // Solid Orange Dark
     case 'PROCESSING':
@@ -182,6 +189,7 @@ export const getStatusColor = (status) => {
       return { bg: '#8B5CF6', text: '#FFFFFF', border: '#6D28D9' }; // Solid Purple
     case 'READY_DELIVERY':
       return { bg: '#7C3AED', text: '#FFFFFF', border: '#5B21B6' }; // Solid Violet
+    case 'CUSTOMER_PICKED_UP':
     case 'SUDAH_DIAMBIL':
       return { bg: '#22C55E', text: '#FFFFFF', border: '#16A34A' }; // Solid Green
     case 'ON_DELIVERY':

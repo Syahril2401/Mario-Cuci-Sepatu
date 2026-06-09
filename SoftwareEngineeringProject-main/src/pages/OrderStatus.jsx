@@ -25,9 +25,26 @@ const fmtDate = (iso) => {
 };
 
 // ─── Timeline Component ──────────────────────────────────────
-const StatusTimeline = ({ currentStatus, history, orderFlow, onImageClick }) => {
+const CROSS_FLOW_MAP = {
+  'WAITING_PICKUP':    'WAITING_DROP_OFF',
+  'WAITING_DROP_OFF':  'WAITING_PICKUP',
+  'PICKED_UP_BY_ADMIN':'STORE_RECEIVED',
+  'STORE_RECEIVED':    'PICKED_UP_BY_ADMIN',
+};
+
+const normalizeStatusForFlow = (rawStatus, flow) => {
+  let s = rawStatus === 'PENDING' ? 'WAITING_VERIFICATION' : rawStatus;
+  if (!flow.includes(s)) {
+    const alt = CROSS_FLOW_MAP[s];
+    if (alt && flow.includes(alt)) s = alt;
+  }
+  return s;
+};
+
+const StatusTimeline = ({ currentStatus, history, orderFlow, onImageClick, createdAt }) => {
   const steps = orderFlow || [];
-  const current = (currentStatus || '').toUpperCase();
+  const raw = (currentStatus || '').toUpperCase();
+  const current = normalizeStatusForFlow(raw, steps);
   const currentIdx = steps.indexOf(current);
 
   return (
@@ -37,6 +54,7 @@ const StatusTimeline = ({ currentStatus, history, orderFlow, onImageClick }) => 
         const isCurrent = idx === currentIdx;
         const isLast = idx === steps.length - 1;
         const histItem = history?.find(h => h.status === step);
+        const timeToShow = histItem ? histItem.time : (step === 'PENDING' ? createdAt : null);
 
         return (
           <div key={step} style={{ display: 'flex', gap: 12, minHeight: 48 }}>
@@ -67,7 +85,7 @@ const StatusTimeline = ({ currentStatus, history, orderFlow, onImageClick }) => 
 
             {/* Text */}
             <div style={{ paddingBottom: isLast ? 0 : 16, flex: 1, paddingTop: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                 <span style={{
                   fontSize: 13,
                   fontWeight: isCurrent ? 800 : isCompleted ? 600 : 500,
@@ -76,9 +94,9 @@ const StatusTimeline = ({ currentStatus, history, orderFlow, onImageClick }) => 
                 }}>
                   {STATUS_LABELS[step] || step}
                 </span>
-                {histItem && (
-                  <span style={{ fontSize: 10, color: '#94a3b8', flexShrink: 0, marginLeft: 6, marginTop: 2 }}>
-                    {fmtDate(histItem.time)}, {fmtTime(histItem.time)}
+                {timeToShow && (
+                  <span style={{ fontSize: 11, color: '#6b7280', marginTop: 3 }}>
+                    🕒 {fmtDate(timeToShow)}, {fmtTime(timeToShow)}
                   </span>
                 )}
               </div>
@@ -214,13 +232,46 @@ const DetailSheet = ({ order, onClose, onImageClick, onUploadProof, onFinish }) 
         {/* ── Scrollable body ── */}
         <div style={{ overflowY: 'auto', flex: 1, padding: '20px 20px 0' }}>
 
+          {/* Activity Timeline with Timestamps */}
+          <section style={{ marginBottom: 20 }}>
+            <h4 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 800, color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Clock size={15} color="#064058" /> Riwayat Aktivitas
+            </h4>
+            <div style={{ background: '#f8fafc', borderRadius: 14, padding: '14px 12px', border: '1px solid #f0f0f0' }}>
+              {/* Order created */}
+              {(order.order_date || order.created_at) && (
+                <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#064058', marginTop: 4, flexShrink: 0 }} />
+                  <div>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#111827' }}>Pesanan Dibuat</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#6b7280' }}>{new Date(order.order_date || order.created_at).toLocaleString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                </div>
+              )}
+              {/* History entries */}
+              {order.history?.filter(h => h.time).map((h, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, marginBottom: i < (order.history?.filter(h2 => h2.time).length - 1) ? 10 : 0 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#0a7da8', marginTop: 4, flexShrink: 0 }} />
+                  <div>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#111827' }}>{STATUS_LABELS[h.status] || h.status}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#6b7280' }}>{new Date(h.time).toLocaleString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                    {h.note && <p style={{ margin: '3px 0 0', fontSize: 11, color: '#475569', fontStyle: 'italic' }}>📝 {h.note}</p>}
+                  </div>
+                </div>
+              ))}
+              {(!order.history || order.history.filter(h => h.time).length === 0) && !order.created_at && (
+                <p style={{ margin: 0, fontSize: 12, color: '#9ca3af', textAlign: 'center' }}>Belum ada riwayat aktivitas</p>
+              )}
+            </div>
+          </section>
+
           {/* Tracking Timeline */}
           <section style={{ marginBottom: 24 }}>
             <h4 style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: '#111827', display: 'flex', alignItems: 'center', gap: 6 }}>
               <MapPin size={15} color="#064058" /> Lacak Pesanan
             </h4>
             <div style={{ background: '#f8fafc', borderRadius: 16, padding: '16px 14px', border: '1px solid #f0f0f0' }}>
-              <StatusTimeline currentStatus={order.status} history={order.history} orderFlow={flow} onImageClick={onImageClick} />
+              <StatusTimeline currentStatus={order.status} history={order.history} orderFlow={flow} onImageClick={onImageClick} createdAt={order.created_at} />
             </div>
           </section>
 
@@ -313,7 +364,7 @@ const DetailSheet = ({ order, onClose, onImageClick, onUploadProof, onFinish }) 
               {isUploading ? 'Mengupload...' : (order.status === 'READY_PICKUP' ? 'Upload Bukti Pengambilan' : 'Upload Bukti Diterima')}
               <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} disabled={isUploading} />
             </label>
-          ) : (order.status === 'RECEIVED' || order.status === 'SUDAH_DIAMBIL' || order.status === 'DELIVERED') ? (
+          ) : (order.status === 'RECEIVED' || order.status === 'CUSTOMER_PICKED_UP' || order.status === 'DELIVERED') ? (
             <button onClick={(e) => { if (onFinish) onFinish(e); }} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               width: '100%', height: 50, borderRadius: 14,
@@ -361,7 +412,7 @@ const OrderStatus = () => {
     try {
       const order = activeOrders.find(o => o.order_id === orderId);
       if (!order) return;
-      const nextStatus = order.status === 'ON_DELIVERY' ? 'RECEIVED' : 'SUDAH_DIAMBIL';
+      const nextStatus = order.status === 'ON_DELIVERY' ? 'RECEIVED' : 'CUSTOMER_PICKED_UP';
       const updatedOrder = { ...order, delivery_photo: base64, status: nextStatus };
       await orderService.updateOrder(updatedOrder);
       fetchOrders();
@@ -406,26 +457,32 @@ const OrderStatus = () => {
 
   const TAB_FILTERS = {
     'Semua': () => true,
-    'Pending': o => o.status === 'PENDING' || o.status === 'MENUNGGU_VERIFIKASI',
-    'Proses': o => ['PROCESSING', 'ANTRI', 'WAITING_PICKUP', 'BARANG_DIAMBIL', 'MENUNGGU_PENGANTARAN', 'BARANG_DITERIMA', 'READY_PICKUP', 'SUDAH_DIAMBIL', 'ON_DELIVERY'].includes(o.status),
+    'Pending': o => o.status === 'PENDING' || o.status === 'WAITING_VERIFICATION',
+    'Proses': o => ['PROCESSING', 'AWAITING_DROP_OFF', 'ANTRI', 'WAITING_PICKUP', 'PICKED_UP_BY_ADMIN', 'WAITING_DROP_OFF', 'STORE_RECEIVED', 'READY_PICKUP', 'CUSTOMER_PICKED_UP', 'ON_DELIVERY'].includes(o.status),
     'Selesai': o => ['RECEIVED', 'READY_DELIVERY', 'FINISHED', 'COMPLETED'].includes(o.status),
     'Dibatalkan': o => o.status === 'CANCELLED'
   };
 
   const STATUS_PRIORITY = {
     'PENDING': 1,
+    'WAITING_VERIFICATION': 2,
     'MENUNGGU_VERIFIKASI': 2,
 
     'WAITING_PICKUP': 3,
+    'PICKED_UP_BY_ADMIN': 4,
     'BARANG_DIAMBIL': 4,
+    'AWAITING_DROP_OFF': 5,
     'ANTRI': 5,
     'PROCESSING': 6,
+    'STORE_RECEIVED': 7,
     'BARANG_DITERIMA': 7,
+    'WAITING_DROP_OFF': 8,
     'MENUNGGU_PENGANTARAN': 8,
 
     'READY_PICKUP': 9,
     'READY_DELIVERY': 10,
     'ON_DELIVERY': 11,
+    'CUSTOMER_PICKED_UP': 12,
     'SUDAH_DIAMBIL': 12,
     'RECEIVED': 13,
     'FINISHED': 14,
@@ -505,8 +562,11 @@ const OrderStatus = () => {
               const isExpanded = expandedId === order.order_id;
               const colors = getStatusColor(order.status);
               const flow = getStatusFlow(order);
-              const currentIdx = flow.indexOf((order.status || '').toUpperCase());
-              const progress = flow.length > 1 ? Math.round((currentIdx / (flow.length - 1)) * 100) : 0;
+              const rawStatus = (order.status || '').toUpperCase();
+              const normalizedStatus = normalizeStatusForFlow(rawStatus, flow);
+              const currentIdx = flow.indexOf(normalizedStatus);
+              const safeIdx = currentIdx === -1 ? 0 : currentIdx;
+              const progress = flow.length > 1 ? Math.round((safeIdx / (flow.length - 1)) * 100) : 0;
 
               return (
                 <div key={order.order_id}
@@ -555,12 +615,44 @@ const OrderStatus = () => {
                     </div>
                   </div>
 
+                  {/* Selesaikan Pesanan — always visible for actionable statuses */}
+                  {(['RECEIVED', 'CUSTOMER_PICKED_UP', 'DELIVERED'].includes(order.status)) && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleConfirmReceived(order, e); }}
+                      style={{
+                        width: '100%', marginTop: 10, padding: '11px 0', borderRadius: 12,
+                        background: 'linear-gradient(135deg, #10b981, #059669)',
+                        color: 'white', border: 'none',
+                        fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                        boxShadow: '0 4px 12px rgba(16,185,129,0.35)',
+                      }}
+                    >
+                      <CheckCircle size={16} /> Selesaikan Pesanan
+                    </button>
+                  )}
+
                   {/* Expanded timeline */}
                   {isExpanded && (
                     <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #f3f4f6' }}>
                       <div style={{ background: '#f8fafc', borderRadius: 14, padding: '14px 12px', marginBottom: 12 }}>
-                        <StatusTimeline currentStatus={order.status} history={order.history} orderFlow={flow} onImageClick={setLightboxImage} />
+                        <StatusTimeline currentStatus={order.status} history={order.history} orderFlow={flow} onImageClick={setLightboxImage} createdAt={order.created_at} />
                       </div>
+
+                      {/* Timestamps info */}
+                      {(order.order_date || order.created_at) && (
+                        <div style={{ background: '#f0f9ff', borderRadius: 10, padding: '10px 12px', marginBottom: 10, border: '1px solid #bae6fd' }}>
+                          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: '#0369a1', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>Waktu Pesanan</p>
+                          <p style={{ margin: 0, fontSize: 12, color: '#374151' }}>
+                            📅 Dibuat: <strong>{new Date(order.order_date || order.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>
+                          </p>
+                          {order.history?.filter(h => h.time).map((h, i) => (
+                            <p key={i} style={{ margin: '3px 0 0', fontSize: 12, color: '#374151' }}>
+                              🔄 {STATUS_LABELS[h.status] || h.status}: <strong>{new Date(h.time).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>
+                            </p>
+                          ))}
+                        </div>
+                      )}
 
                       <button
                         onClick={(e) => { e.stopPropagation(); setSelectedOrder(order); }}
@@ -569,7 +661,21 @@ const OrderStatus = () => {
                         Lihat Detail Lengkap
                       </button>
 
-                      {(order.status === 'PENDING' || order.status === 'MENUNGGU_VERIFIKASI') && (
+                      {(['RECEIVED', 'CUSTOMER_PICKED_UP', 'DELIVERED'].includes(order.status)) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleConfirmReceived(order, e); }}
+                          style={{
+                            width: '100%', marginTop: 8, padding: 12, borderRadius: 12,
+                            background: '#10b981', color: 'white', border: 'none',
+                            fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          }}
+                        >
+                          <CheckCircle size={16} /> Selesaikan Pesanan
+                        </button>
+                      )}
+
+                      {order.status === 'PENDING' && (
                         <>
                           <button
                             onClick={(e) => { e.stopPropagation(); navigate(`/payment/${order.order_id}`); }}
@@ -585,6 +691,11 @@ const OrderStatus = () => {
                             Batalkan Pesanan
                           </button>
                         </>
+                      )}
+                      {(order.status === 'WAITING_VERIFICATION' || order.status === 'MENUNGGU_VERIFIKASI') && (
+                        <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 12, background: '#FFF7ED', border: '1px solid #FED7AA', fontSize: 12, color: '#92400E', fontWeight: 600, textAlign: 'center' }}>
+                          ⏳ Pembayaran sedang diverifikasi oleh admin
+                        </div>
                       )}
                     </div>
                   )}

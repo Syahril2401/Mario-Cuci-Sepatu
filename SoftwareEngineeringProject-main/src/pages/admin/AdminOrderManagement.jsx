@@ -1,9 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { orderService, getStatusFlow, getStatusColor, canUpdateStatus, STATUS_LABELS, formatOrderId } from '../../services/orderService';
-import { Search, Filter, Package, Clock, Check, X, MapPin, Calendar, Smartphone, User, MessageCircle, FileText, Truck, UserCheck, Camera, CheckCircle2, ArrowUpRight, AlertCircle } from 'lucide-react';
+import { Search, Filter, Package, Clock, Check, X, MapPin, Calendar, Smartphone, User, MessageCircle, FileText, Truck, UserCheck, Camera, CheckCircle2, ArrowUpRight, AlertCircle, Plus } from 'lucide-react';
 import './Admin.css';
 import '../Pages.css';
+
+// Cross-flow status normalization (handles data inconsistency between status & pickupMethod)
+const CROSS_FLOW_MAP = {
+  'WAITING_PICKUP':     'WAITING_DROP_OFF',
+  'WAITING_DROP_OFF':   'WAITING_PICKUP',
+  'PICKED_UP_BY_ADMIN': 'STORE_RECEIVED',
+  'STORE_RECEIVED':     'PICKED_UP_BY_ADMIN',
+  'PENDING':            'WAITING_VERIFICATION',
+};
+const normalizeStatusForFlow = (rawStatus, flow) => {
+  if (flow.includes(rawStatus)) return rawStatus;
+  const alt = CROSS_FLOW_MAP[rawStatus];
+  if (alt && flow.includes(alt)) return alt;
+  return flow[0] || rawStatus;
+};
+
+// Pickup/Return method label helpers — handles both old and new data formats
+const getPickupLabel = (method) => {
+  if (!method) return { label: 'Drop Off', icon: '🚶', color: '#6B7280', bg: '#F3F4F6' };
+  const m = method.toUpperCase();
+  if (m === 'SELF_DROP' || m === 'AMBIL SENDIRI') 
+    return { label: 'Self Drop', icon: '🚶', color: '#0369a1', bg: '#E0F2FE' };
+  return { label: 'Pickup Admin', icon: '🏍', color: '#7C3AED', bg: '#EDE9FE' };
+};
+const getReturnLabel = (method) => {
+  if (!method) return { label: 'Ambil di Toko', icon: '🏪', color: '#6B7280', bg: '#F3F4F6' };
+  const m = method.toUpperCase();
+  if (m === 'SELF_PICKUP' || m === 'DIAMBIL SENDIRI' || m === 'AMBIL SENDIRI') 
+    return { label: 'Ambil di Toko', icon: '🏪', color: '#0369a1', bg: '#E0F2FE' };
+  return { label: 'Diantar Admin', icon: '🚚', color: '#7C3AED', bg: '#EDE9FE' };
+};
 
 const AdminOrderManagement = () => {
   const location = useLocation();
@@ -13,7 +44,7 @@ const AdminOrderManagement = () => {
   const [updatingId, setUpdatingId] = useState(null);
   const [successId, setSuccessId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [tempProofs, setTempProofs] = useState({ pickup_photo: null, received_photo: null, delivery_photo: null, proof_image: null });
+  const [tempProofs, setTempProofs] = useState({ pickup_photo: [], received_photo: [], delivery_photo: [], proof_image: [] });
   const [tempNote, setTempNote] = useState('');
   const [isSavingProof, setIsSavingProof] = useState(false);
   const [confirmPopup, setConfirmPopup] = useState(null);
@@ -37,13 +68,17 @@ const AdminOrderManagement = () => {
 
     switch (status) {
       case 'PENDING':
+      case 'WAITING_VERIFICATION':
       case 'MENUNGGU_VERIFIKASI':
-        return { title: 'Konfirmasi Pembayaran', buttonLabel: 'Konfirmasi Pembayaran ✓', nextStatus: isSelfDrop ? 'MENUNGGU_PENGANTARAN' : 'WAITING_PICKUP', requiresPhoto: false, description: 'Verifikasi bahwa pembayaran customer sudah diterima dan pesanan sedang diproses.' };
+        return { title: 'Konfirmasi Pembayaran', buttonLabel: 'Konfirmasi Pembayaran ✓', nextStatus: isSelfDrop ? 'WAITING_DROP_OFF' : 'WAITING_PICKUP', requiresPhoto: false, description: 'Verifikasi bahwa pembayaran customer sudah diterima dan pesanan sedang diproses.' };
+      case 'WAITING_DROP_OFF':
       case 'MENUNGGU_PENGANTARAN':
-        return { title: 'Terima Barang', buttonLabel: 'Konfirmasi Barang Diterima', nextStatus: 'BARANG_DITERIMA', requiresPhoto: true, photoField: 'received_photo', icon: <Camera size={24} color="#064058" />, description: 'Upload foto sepatu saat diterima dari customer.' };
+        return { title: 'Terima Barang', buttonLabel: 'Konfirmasi Barang Diterima', nextStatus: 'STORE_RECEIVED', requiresPhoto: true, photoField: 'received_photo', icon: <Camera size={24} color="#064058" />, description: 'Upload foto sepatu saat diterima dari customer.' };
       case 'WAITING_PICKUP':
-        return { title: 'Jemput Barang', buttonLabel: 'Konfirmasi Penjemputan', nextStatus: 'BARANG_DIAMBIL', requiresPhoto: true, photoField: 'pickup_photo', icon: <Camera size={24} color="#064058" />, description: 'Upload foto barang saat dijemput dari customer.' };
+        return { title: 'Jemput Barang', buttonLabel: 'Konfirmasi Penjemputan', nextStatus: 'PICKED_UP_BY_ADMIN', requiresPhoto: true, photoField: 'pickup_photo', icon: <Camera size={24} color="#064058" />, description: 'Upload foto barang saat dijemput dari customer.' };
+      case 'STORE_RECEIVED':
       case 'BARANG_DITERIMA':
+      case 'PICKED_UP_BY_ADMIN':
       case 'BARANG_DIAMBIL':
         return { title: 'Mulai Proses Cuci', buttonLabel: 'Proses Pesanan', nextStatus: 'PROCESSING', requiresPhoto: false, description: 'Tandai bahwa sepatu sedang dibersihkan/diproses.' };
       case 'PROCESSING':
@@ -57,7 +92,7 @@ const AdminOrderManagement = () => {
           description: isSelfPickup ? 'Upload foto sepatu yang sudah selesai diproses (siap diambil).' : 'Upload foto sepatu yang sudah selesai (siap dikirim).' 
         };
       case 'READY_PICKUP':
-        return { title: 'Konfirmasi Pengambilan', buttonLabel: 'Konfirmasi Barang Diambil', nextStatus: 'SUDAH_DIAMBIL', requiresPhoto: false, description: 'Konfirmasi bahwa sepatu sudah diambil oleh customer.' };
+        return { title: 'Konfirmasi Pengambilan', buttonLabel: 'Konfirmasi Barang Diambil', nextStatus: 'CUSTOMER_PICKED_UP', requiresPhoto: false, description: 'Konfirmasi bahwa sepatu sudah diambil oleh customer.' };
       case 'READY_DELIVERY':
         return { title: 'Mulai Pengiriman', buttonLabel: 'Mulai Antar Sekarang 🚚', nextStatus: 'ON_DELIVERY', requiresPhoto: false, description: 'Tandai bahwa sepatu sudah dalam perjalanan ke customer.' };
       default:
@@ -78,50 +113,167 @@ const AdminOrderManagement = () => {
     fetchOrders();
   }, []);
 
-  const handleFileUpload = (e, field) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`File "${file.name}" terlalu besar! Maksimal 5MB.`);
+        resolve(null);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const MAX_SIZE = 800;
+          if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } }
+          else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.6));
+        };
+        img.onerror = () => resolve(null);
+        img.src = reader.result;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  };
 
-    // 5MB initial validation before compression
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Ukuran file terlalu besar! Maksimal 5MB.");
-      return;
-    }
+  const handleFileUpload = async (e, field) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    // Reset input so same files can be re-selected
+    e.target.value = '';
+    const compressed = await Promise.all(files.map(compressImage));
+    const valid = compressed.filter(Boolean);
+    if (!valid.length) return;
+    setTempProofs(prev => ({ ...prev, [field]: [...(prev[field] || []), ...valid] }));
+  };
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      // Compress image
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        const MAX_SIZE = 800; // Resize to max 800px
+  const handleRemoveTempPhoto = (field, idx) => {
+    setTempProofs(prev => ({ ...prev, [field]: prev[field].filter((_, i) => i !== idx) }));
+  };
 
-        if (width > height) {
-          if (width > MAX_SIZE) {
-            height *= MAX_SIZE / width;
-            width = MAX_SIZE;
-          }
-        } else {
-          if (height > MAX_SIZE) {
-            width *= MAX_SIZE / height;
-            height = MAX_SIZE;
-          }
+  const handleMultiplePhotoUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length || !selectedOrder) return;
+
+    const readAndCompress = (file) => {
+      return new Promise((resolve) => {
+        if (file.size > 5 * 1024 * 1024) {
+          alert(`File ${file.name} terlalu besar! Maksimal 5MB.`);
+          resolve(null);
+          return;
         }
 
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            const MAX_SIZE = 800;
 
-        // Compress to 0.6 quality WebP or JPEG
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
-        setTempProofs(prev => ({ ...prev, [field]: compressedDataUrl }));
-      };
-      img.src = reader.result;
+            if (width > height) {
+              if (width > MAX_SIZE) {
+                height *= MAX_SIZE / width;
+                width = MAX_SIZE;
+              }
+            } else {
+              if (height > MAX_SIZE) {
+                width *= MAX_SIZE / height;
+                height = MAX_SIZE;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+            resolve(compressedDataUrl);
+          };
+          img.onerror = () => resolve(null);
+          img.src = reader.result;
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      });
     };
-    reader.readAsDataURL(file);
+
+    const compressedImages = await Promise.all(files.map(readAndCompress));
+    const validImages = compressedImages.filter(Boolean);
+
+    if (validImages.length === 0) return;
+
+    let currentPhotos = [];
+    if (selectedOrder.photos) {
+      try {
+        currentPhotos = typeof selectedOrder.photos === 'string' ? JSON.parse(selectedOrder.photos) : selectedOrder.photos;
+      } catch (_) {
+        currentPhotos = [];
+      }
+    }
+    if (!Array.isArray(currentPhotos)) {
+      currentPhotos = [];
+    }
+    if (currentPhotos.length === 0 && selectedOrder.photo) {
+      currentPhotos = [selectedOrder.photo];
+    }
+
+    const updatedPhotos = [...currentPhotos, ...validImages];
+    const updatedOrder = { 
+      ...selectedOrder, 
+      photos: updatedPhotos,
+      photo: updatedPhotos[0] || null
+    };
+
+    try {
+      await orderService.updateOrder(updatedOrder);
+      setSelectedOrder(updatedOrder);
+      setOrders(prev => prev.map(o => o.order_id === updatedOrder.order_id ? updatedOrder : o));
+    } catch (err) {
+      alert('Gagal mengunggah foto: ' + err.message);
+    }
+  };
+
+  const handleDeletePhoto = async (indexToDelete) => {
+    if (!selectedOrder) return;
+    let currentPhotos = [];
+    if (selectedOrder.photos) {
+      try {
+        currentPhotos = typeof selectedOrder.photos === 'string' ? JSON.parse(selectedOrder.photos) : selectedOrder.photos;
+      } catch (_) {
+        currentPhotos = [];
+      }
+    }
+    if (!Array.isArray(currentPhotos)) {
+      currentPhotos = [];
+    }
+    if (currentPhotos.length === 0 && selectedOrder.photo) {
+      currentPhotos = [selectedOrder.photo];
+    }
+
+    const updatedPhotos = currentPhotos.filter((_, idx) => idx !== indexToDelete);
+    const updatedOrder = { 
+      ...selectedOrder, 
+      photos: updatedPhotos,
+      photo: updatedPhotos[0] || null
+    };
+
+    try {
+      await orderService.updateOrder(updatedOrder);
+      setSelectedOrder(updatedOrder);
+      setOrders(prev => prev.map(o => o.order_id === updatedOrder.order_id ? updatedOrder : o));
+    } catch (err) {
+      alert('Gagal menghapus foto: ' + err.message);
+    }
   };
 
   // Unified handler for all order actions (photo + non-photo)
@@ -130,16 +282,19 @@ const AdminOrderManagement = () => {
     const { nextStatus, requiresPhoto, photoField } = action;
 
     if (requiresPhoto) {
-      if (!tempProofs[photoField]) {
+      if (!tempProofs[photoField] || tempProofs[photoField].length === 0) {
         alert('Mohon upload foto bukti terlebih dahulu!');
         return;
       }
       setIsSavingProof(true);
       const now = new Date().toISOString();
+      const photos = tempProofs[photoField]; // always an array
       const updatedOrder = {
         ...selectedOrder,
         status: nextStatus,
-        [photoField]: tempProofs[photoField],
+        // Store first photo in the original field for backward compat, plus full array
+        [photoField]: photos[0] || null,
+        [`${photoField}_all`]: photos,
         [`${photoField}_time`]: now,
         note: tempNote || undefined
       };
@@ -215,12 +370,12 @@ const AdminOrderManagement = () => {
 
   const FILTER_OPTIONS = [
     { value: 'All', label: 'Semua' },
-    { value: 'MENUNGGU_VERIFIKASI', label: 'Menunggu Verifikasi Pembayaran' },
-    { value: 'MENUNGGU_PENGANTARAN', label: 'Menunggu Pengantaran Barang' },
-    { value: 'BARANG_DITERIMA', label: 'Barang Sudah Diterima' },
+    { value: 'WAITING_VERIFICATION', label: 'Menunggu Verifikasi Pembayaran' },
+    { value: 'WAITING_DROP_OFF', label: 'Menunggu Pengantaran Barang' },
+    { value: 'STORE_RECEIVED', label: 'Barang Sudah Diterima' },
     { value: 'PROCESSING', label: 'Sedang Diproses' },
     { value: 'READY_PICKUP', label: 'Siap Dikirim/Ambil' },
-    { value: 'SUDAH_DIAMBIL', label: 'Sudah Dikirim/Diambil' }, 
+    { value: 'CUSTOMER_PICKED_UP', label: 'Sudah Dikirim/Diambil' }, 
     { value: 'FINISHED', label: 'Selesai' },
     { value: 'CANCELLED', label: 'Dibatalkan' }
   ];
@@ -232,31 +387,47 @@ const AdminOrderManagement = () => {
     if (!matchesSearch) return false;
     if (filterStatus === 'All') return true;
 
-    if (filterStatus === 'MENUNGGU_VERIFIKASI') return ['MENUNGGU_VERIFIKASI', 'PENDING'].includes(order.status);
-    if (filterStatus === 'MENUNGGU_PENGANTARAN') return ['MENUNGGU_PENGANTARAN', 'WAITING_PICKUP', 'ANTRI'].includes(order.status);
-    if (filterStatus === 'BARANG_DITERIMA') return ['BARANG_DITERIMA', 'BARANG_DIAMBIL'].includes(order.status);
+    if (filterStatus === 'WAITING_VERIFICATION') return ['WAITING_VERIFICATION', 'MENUNGGU_VERIFIKASI', 'PENDING'].includes(order.status);
+    if (filterStatus === 'WAITING_DROP_OFF') return ['WAITING_DROP_OFF', 'MENUNGGU_PENGANTARAN', 'WAITING_PICKUP', 'AWAITING_DROP_OFF', 'ANTRI'].includes(order.status);
+    if (filterStatus === 'STORE_RECEIVED') return ['STORE_RECEIVED', 'BARANG_DITERIMA', 'PICKED_UP_BY_ADMIN', 'BARANG_DIAMBIL'].includes(order.status);
     if (filterStatus === 'PROCESSING') return ['PROCESSING'].includes(order.status);
     if (filterStatus === 'READY_PICKUP') return ['READY_PICKUP', 'READY_DELIVERY', 'READY'].includes(order.status);
-    if (filterStatus === 'SUDAH_DIAMBIL') return ['SUDAH_DIAMBIL', 'RECEIVED', 'ON_DELIVERY', 'DELIVERED'].includes(order.status);
+    if (filterStatus === 'CUSTOMER_PICKED_UP') return ['CUSTOMER_PICKED_UP', 'SUDAH_DIAMBIL', 'RECEIVED', 'ON_DELIVERY', 'DELIVERED'].includes(order.status);
     if (filterStatus === 'FINISHED') return ['FINISHED', 'COMPLETED'].includes(order.status);
     if (filterStatus === 'CANCELLED') return ['CANCELLED'].includes(order.status);
-    
     return order.status === filterStatus;
+  }).sort((a, b) => {
+    let dateA = 0;
+    if (a.order_date) dateA = new Date(a.order_date).getTime();
+    else if (a.created_at) dateA = new Date(a.created_at).getTime();
+    if (isNaN(dateA)) dateA = 0;
+
+    let dateB = 0;
+    if (b.order_date) dateB = new Date(b.order_date).getTime();
+    else if (b.created_at) dateB = new Date(b.created_at).getTime();
+    if (isNaN(dateB)) dateB = 0;
+
+    if (dateB !== dateA) return dateB - dateA;
+    
+    const idA = a.order_id || '';
+    const idB = b.order_id || '';
+    return idB.toString().localeCompare(idA.toString());
   });
 
   const handleCardClick = (order) => {
     setSelectedOrder(order);
     setTempProofs({ 
-      pickup_photo: order.pickup_photo || null, 
-      received_photo: order.received_photo || null,
-      delivery_photo: order.delivery_photo || null 
+      pickup_photo: [], 
+      received_photo: [],
+      delivery_photo: [],
+      proof_image: []
     });
     setTempNote('');
   };
 
   const closeModal = () => {
     setSelectedOrder(null);
-    setTempProofs({ pickup_photo: null, received_photo: null, delivery_photo: null, proof_image: null });
+    setTempProofs({ pickup_photo: [], received_photo: [], delivery_photo: [], proof_image: [] });
   };
 
   return (
@@ -330,157 +501,197 @@ const AdminOrderManagement = () => {
             const colors = getStatusColor(order.status);
             const isUpdating = updatingId === order.order_id;
             const isSuccess = successId === order.order_id;
-
-            // Determine valid next status from dynamic flow
             const flow = getStatusFlow(order);
-            const currentIndex = flow.indexOf(order.status.toUpperCase());
-            const nextStatus = currentIndex !== -1 && currentIndex < flow.length - 1 ? flow[currentIndex + 1] : null;
-            
-            // Admin cannot set FINISHED
-            const finalNextStatus = nextStatus === 'FINISHED' ? null : nextStatus;
+            const rawStatus = (order.status || '').toUpperCase();
+            const normalizedStatus = normalizeStatusForFlow(rawStatus, flow);
+            const currentIdx = flow.indexOf(normalizedStatus);
+            const safeIdx = currentIdx === -1 ? 0 : currentIdx;
+            const progressPct = flow.length > 1 ? Math.round((safeIdx / (flow.length - 1)) * 100) : 0;
+            const p = getPickupLabel(order.pickupMethod);
+            const r = getReturnLabel(order.returnMethod);
+            const isDone = ['FINISHED', 'CANCELLED', 'CUSTOMER_PICKED_UP', 'RECEIVED'].includes(order.status);
+            const config = getNextAction(order);
 
             return (
-              <div 
-                key={order.order_id} 
+              <div
+                key={order.order_id}
                 onClick={() => handleCardClick(order)}
-                style={{ 
-                  backgroundColor: 'white', 
-                  borderRadius: '16px', 
-                  padding: '16px', 
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                  borderLeft: `4px solid ${colors.border}`,
+                className="order-card-admin"
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: '20px',
+                  overflow: 'hidden',
+                  boxShadow: '0 2px 16px rgba(6,64,88,0.08)',
+                  border: '1px solid #F0F4F8',
                   display: 'flex',
                   flexDirection: 'column',
                   cursor: 'pointer',
-                  transition: 'transform 0.1s active',
+                  transition: 'box-shadow 0.2s, transform 0.15s',
                 }}
-                className="order-card-admin"
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 28px rgba(6,64,88,0.14)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 16px rgba(6,64,88,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}
               >
-                {/* Top Row: ID & Badge */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#111827' }}>{formatOrderId(order)}</h4>
-                    {!!order.is_overflow_order && (
-                      <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#D97706', backgroundColor: '#FFFBEB', padding: '2px 8px', borderRadius: '4px', border: '1px solid #FEF3C7', width: 'fit-content' }}>
-                        📅 Scheduled for Tomorrow
+                {/* Coloured accent bar */}
+                <div style={{ height: '4px', background: `linear-gradient(90deg, ${colors.bg}, ${colors.border})` }} />
+
+                {/* Card Body */}
+                <div style={{ padding: '16px 18px 14px' }}>
+
+                  {/* ── Row 1: Order ID + Status badge ── */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94A3B8', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
+                        {formatOrderId(order)}
                       </span>
-                    )}
-                  </div>
-                  <span style={{ 
-                    padding: '6px 12px', 
-                    borderRadius: '999px', 
-                    fontSize: '0.75rem', 
-                    fontWeight: 700,
-                    backgroundColor: colors.bg,
-                    color: colors.text,
-                    letterSpacing: '0.5px'
-                  }}>
-                    {STATUS_LABELS[order.status] || order.status}
-                  </span>
-                </div>
-
-                {/* Pickup Method Info */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', color: '#6B7280', fontSize: '0.8rem' }}>
-                  {order.pickupMethod === 'SELF_DROP' ? <UserCheck size={14} /> : <Truck size={14} />}
-                  <span>{order.pickupMethod === 'SELF_DROP' ? 'Diantar Sendiri' : 'Dijemput Admin'}</span>
-                </div>
-
-                {/* Service Name */}
-                <p style={{ margin: '0 0 12px 0', color: '#4B5563', fontSize: '0.9rem', fontWeight: 500 }}>
-                  {order.service || 'Cuci Sepatu Reguler'} {order.type ? `(${order.type})` : ''}
-                </p>
-
-                {/* Price & Date */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <span style={{ fontWeight: 'bold', color: '#064058', fontSize: '1.15rem' }}>
-                    Rp {Number(order.total_price || order.totalPrice || 0).toLocaleString('id-ID')}
-                  </span>
-                  <span style={{ fontSize: '0.8rem', color: '#9CA3AF' }}>
-                    {order.created_at ? new Date(order.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
-                  </span>
-                </div>
-
-                <div style={{ borderTop: '1px dashed #E5E7EB', margin: '0 -16px 16px -16px' }}></div>
-
-                {/* Status Progress & Actions */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }} onClick={(e) => e.stopPropagation()}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Actions Required
-                  </label>
-                  
-                  {isSuccess && (
-                    <div style={{ 
-                      backgroundColor: '#DCFCE7', color: '#166534', padding: '8px 12px', 
-                      borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700,
-                      display: 'flex', alignItems: 'center', gap: '6px', animation: 'fadeIn 0.3s'
+                      <span style={{ fontSize: '1rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {order.service || 'Cuci Sepatu'}
+                        {order.type ? <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748B', marginLeft: '6px' }}>({order.type})</span> : null}
+                      </span>
+                      {!!order.is_overflow_order && (
+                        <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#D97706', backgroundColor: '#FFFBEB', padding: '1px 7px', borderRadius: '4px', border: '1px solid #FEF3C7', width: 'fit-content' }}>
+                          📅 Besok
+                        </span>
+                      )}
+                    </div>
+                    <span style={{
+                      flexShrink: 0,
+                      padding: '5px 11px',
+                      borderRadius: '999px',
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      backgroundColor: colors.bg,
+                      color: colors.text,
+                      lineHeight: 1.35,
+                      textAlign: 'center'
                     }}>
-                      <CheckCircle2 size={14} /> Status updated successfully!
+                      {STATUS_LABELS[order.status] || order.status}
+                    </span>
+                  </div>
+
+                  {/* ── Row 2: Pickup + Return chips ── */}
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                      padding: '3px 10px', borderRadius: '999px', fontSize: '0.68rem',
+                      fontWeight: 700, background: p.bg, color: p.color,
+                      border: `1px solid ${p.color}30`
+                    }}>{p.icon} {p.label}</span>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                      padding: '3px 10px', borderRadius: '999px', fontSize: '0.68rem',
+                      fontWeight: 700, background: r.bg, color: r.color,
+                      border: `1px solid ${r.color}30`
+                    }}>{r.icon} {r.label}</span>
+                  </div>
+
+                  {/* ── Row 3: Price + Date ── */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <span style={{ fontWeight: 800, color: '#064058', fontSize: '1.1rem' }}>
+                      Rp {Number(order.total_price || order.totalPrice || 0).toLocaleString('id-ID')}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      🗓 Est. {order.delivery_date
+                        ? new Date(order.delivery_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : (order.order_date || order.created_at
+                          ? new Date(order.order_date || order.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : 'N/A')}
+                    </span>
+                  </div>
+
+                  {/* ── Progress bar (single clean bar) ── */}
+                  {!isDone && (
+                    <div style={{ marginBottom: '14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Progress</span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: colors.border }}>{progressPct}%</span>
+                      </div>
+                      <div style={{ height: '7px', background: '#F1F5F9', borderRadius: '999px', overflow: 'hidden' }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${progressPct}%`,
+                          backgroundColor: colors.border,
+                          borderRadius: '999px',
+                          transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)'
+                        }} />
+                      </div>
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {(() => {
-                      const config = getNextAction(order);
-                      const targetStatus = config ? config.nextStatus : null;
+                  {/* ── Divider ── */}
+                  <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, #E2E8F0, transparent)', margin: '0 -18px 14px -18px' }} />
 
-                      if (order.status === 'FINISHED' || order.status === 'CANCELLED') {
-                        return (
-                          <div style={{ 
-                            padding: '10px 16px', borderRadius: '12px', backgroundColor: '#F3F4F6', 
-                            color: '#9CA3AF', fontSize: '0.85rem', fontWeight: 700, width: '100%', textAlign: 'center' 
-                          }}>
-                            {order.status === 'FINISHED' ? 'Order Completed' : 'Order Cancelled'}
-                          </div>
-                        );
-                      }
+                  {/* ── Action buttons ── */}
+                  <div onClick={e => e.stopPropagation()}>
+                    {isSuccess && (
+                      <div style={{
+                        backgroundColor: '#ECFDF5', color: '#059669', padding: '8px 12px',
+                        borderRadius: '10px', fontSize: '0.75rem', fontWeight: 700,
+                        display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px'
+                      }}>
+                        <CheckCircle2 size={14} /> Status berhasil diperbarui!
+                      </div>
+                    )}
 
-                      return (
-                        <>
-                          {config && (
-                            <button
-                              disabled={isUpdating}
-                              onClick={() => {
-                                if (config.requiresPhoto) {
-                                  handleCardClick(order); // Force open modal for proof upload
-                                } else {
-                                  setConfirmPopup({
-                                    orderId: order.order_id,
-                                    nextStatus: targetStatus,
-                                    title: config.title,
-                                    message: `Ganti status ke "${STATUS_LABELS[targetStatus] || targetStatus}"?`,
-                                    isCancel: false
-                                  });
-                                }
-                              }}
-                              style={{ 
-                                flex: 2, padding: '12px', borderRadius: '12px', border: 'none',
-                                backgroundColor: '#064058', color: 'white', fontWeight: 700, fontSize: '0.85rem',
-                                cursor: isUpdating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', 
-                                justifyContent: 'center', gap: '6px', transition: 'all 0.2s'
-                              }}
-                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0a5b7d'}
-                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#064058'}
-                            >
-                              {isUpdating ? <span className="spinner-small" style={{ borderTopColor: 'white' }} /> : (config.requiresPhoto ? <Camera size={16} /> : <CheckCircle2 size={16} />)}
-                              {isUpdating ? 'Updating...' : config.buttonLabel}
-                            </button>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Tiny Progress Indicator */}
-                  <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                    {getStatusFlow(order).map((s, idx) => (
-                      <div 
-                        key={s} 
-                        style={{ 
-                          flex: 1, height: '4px', borderRadius: '2px',
-                          backgroundColor: idx <= getStatusFlow(order).indexOf(order.status.toUpperCase()) ? '#064058' : '#E5E7EB'
-                        }}
-                      ></div>
-                    ))}
+                    {isDone ? (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: '10px 16px', borderRadius: '12px',
+                        backgroundColor: order.status === 'CANCELLED' ? '#FFF1F2' : '#F0FDF4',
+                        color: order.status === 'CANCELLED' ? '#E11D48' : '#059669',
+                        fontSize: '0.82rem', fontWeight: 800, gap: '6px',
+                        border: `1px solid ${order.status === 'CANCELLED' ? '#FECDD3' : '#BBF7D0'}`
+                      }}>
+                        {order.status === 'CANCELLED' ? '✕ Order Dibatalkan' : '✓ Order Selesai'}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {config && (
+                          <button
+                            disabled={isUpdating}
+                            onClick={() => {
+                              if (config.requiresPhoto) {
+                                handleCardClick(order);
+                              } else {
+                                setConfirmPopup({
+                                  orderId: order.order_id,
+                                  nextStatus: config.nextStatus,
+                                  title: config.title,
+                                  message: `Ganti status ke "${STATUS_LABELS[config.nextStatus] || config.nextStatus}"?`,
+                                  isCancel: false
+                                });
+                              }
+                            }}
+                            style={{
+                              flex: 1, padding: '11px 14px', borderRadius: '12px', border: 'none',
+                              background: isUpdating ? '#94A3B8' : `linear-gradient(135deg, #064058, #0a6a8a)`,
+                              color: 'white', fontWeight: 800, fontSize: '0.82rem',
+                              cursor: isUpdating ? 'not-allowed' : 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              gap: '6px', boxShadow: '0 2px 8px rgba(6,64,88,0.25)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {isUpdating ? <span className="spinner-small" style={{ borderTopColor: 'white' }} /> : (config.requiresPhoto ? <Camera size={15} /> : <CheckCircle2 size={15} />)}
+                            {isUpdating ? 'Memproses...' : config.buttonLabel}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleCardClick(order)}
+                          style={{
+                            padding: '11px 14px', borderRadius: '12px',
+                            border: '1.5px solid #E2E8F0',
+                            backgroundColor: 'white', color: '#475569',
+                            fontWeight: 700, fontSize: '0.82rem',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px',
+                            transition: 'all 0.15s'
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#064058'; e.currentTarget.style.color = '#064058'; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#475569'; }}
+                        >
+                          <FileText size={15} /> Detail
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -542,36 +753,36 @@ const AdminOrderManagement = () => {
                   }
                 }
                 const hasPhotosArray = Array.isArray(photosArray) && photosArray.length > 0;
-                const hasSinglePhoto = !!selectedOrder.photo;
-
-                if (!hasPhotosArray && !hasSinglePhoto) return null;
+                const hasSinglePhoto = !hasPhotosArray && !!selectedOrder.photo;
+                const displayPhotos = hasPhotosArray ? photosArray : (hasSinglePhoto ? [selectedOrder.photo] : []);
 
                 return (
                   <div style={{ width: '100%' }}>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: '8px' }}>Item Photo(s)</label>
-                    {hasPhotosArray ? (
-                      <div style={{ 
-                        display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px',
-                        scrollbarWidth: 'none', msOverflowStyle: 'none'
-                      }}>
-                        {photosArray.map((p, idx) => (
-                          <img 
-                            key={idx}
-                            src={p} 
-                            alt={`Order Item ${idx + 1}`} 
-                            onClick={() => handleImageClick(p)}
-                            style={{ width: '140px', height: '140px', borderRadius: '16px', objectFit: 'cover', border: '1px solid #E5E7EB', flexShrink: 0, cursor: 'pointer' }} 
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <img 
-                        src={selectedOrder.photo} 
-                        alt="Order Item" 
-                        onClick={() => handleImageClick(selectedOrder.photo)}
-                        style={{ width: '100%', borderRadius: '16px', objectFit: 'cover', border: '1px solid #E5E7EB', cursor: 'pointer' }} 
-                      />
-                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' }}>Item Photo(s)</label>
+                    </div>
+                    
+                    <div style={{ 
+                      display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px',
+                      scrollbarWidth: 'none', msOverflowStyle: 'none'
+                    }} className="hide-scroll">
+                      {displayPhotos.length === 0 ? (
+                        <div style={{ color: '#9CA3AF', fontSize: '0.85rem', fontStyle: 'italic', padding: '12px 0' }}>
+                          Tidak ada foto item dari customer.
+                        </div>
+                      ) : (
+                        displayPhotos.map((p, idx) => (
+                          <div key={idx} style={{ position: 'relative', width: '120px', height: '120px', flexShrink: 0 }}>
+                            <img 
+                              src={p} 
+                              alt={`Order Item ${idx + 1}`} 
+                              onClick={() => handleImageClick(p)}
+                              style={{ width: '100%', height: '100%', borderRadius: '16px', objectFit: 'cover', border: '1px solid #E5E7EB', cursor: 'pointer' }} 
+                            />
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 );
               })()}
@@ -646,21 +857,56 @@ const AdminOrderManagement = () => {
 
                     {action.requiresPhoto && (
                       <div style={{ marginBottom: '14px' }}>
-                        {tempProofs[action.photoField] ? (
-                          <div style={{ position: 'relative' }}>
-                            <img src={tempProofs[action.photoField]} alt="Preview" style={{ width: '100%', borderRadius: '14px', height: '180px', objectFit: 'cover', border: '2px solid white', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                            <button onClick={() => setTempProofs(prev => ({ ...prev, [action.photoField]: null }))} style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%', padding: '6px', color: 'white', cursor: 'pointer' }}>
-                              <X size={16} />
-                            </button>
+                        {/* Grid preview of selected photos */}
+                        {(tempProofs[action.photoField] || []).length > 0 && (
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(3, 1fr)',
+                            gap: '8px',
+                            marginBottom: '10px'
+                          }}>
+                            {tempProofs[action.photoField].map((src, idx) => (
+                              <div key={idx} style={{ position: 'relative', aspectRatio: '1', borderRadius: '12px', overflow: 'hidden', border: '2px solid #BAE6FD', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                                <img
+                                  src={src}
+                                  alt={`Foto ${idx + 1}`}
+                                  onClick={() => handleImageClick(src)}
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
+                                />
+                                <button
+                                  onClick={() => handleRemoveTempPhoto(action.photoField, idx)}
+                                  style={{
+                                    position: 'absolute', top: '4px', right: '4px',
+                                    background: 'rgba(0,0,0,0.6)', border: 'none',
+                                    borderRadius: '50%', width: '22px', height: '22px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: 'white', cursor: 'pointer', padding: 0
+                                  }}
+                                >
+                                  <X size={12} />
+                                </button>
+                                <div style={{
+                                  position: 'absolute', bottom: '4px', left: '4px',
+                                  background: 'rgba(0,0,0,0.5)', borderRadius: '6px',
+                                  padding: '1px 5px', fontSize: '0.6rem', color: 'white', fontWeight: 700
+                                }}>{idx + 1}</div>
+                              </div>
+                            ))}
                           </div>
-                        ) : (
-                          <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '130px', border: '2px dashed #7DD3FC', borderRadius: '14px', cursor: 'pointer', background: 'rgba(255,255,255,0.7)' }}>
-                            {action.icon || <Camera size={28} color="#0369A1" />}
-                            <span style={{ fontSize: '0.82rem', color: '#0369A1', fontWeight: 700, marginTop: '8px' }}>Tap untuk upload foto bukti</span>
-                            <span style={{ fontSize: '0.7rem', color: '#7DD3FC' }}>Maks. 5MB</span>
-                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, action.photoField)} />
-                          </label>
                         )}
+                        {/* Upload area — always shown so more photos can be added */}
+                        <label style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                          height: (tempProofs[action.photoField] || []).length > 0 ? '70px' : '130px',
+                          border: '2px dashed #7DD3FC', borderRadius: '14px', cursor: 'pointer',
+                          background: 'rgba(255,255,255,0.7)', transition: 'height 0.2s'
+                        }}>
+                          {(tempProofs[action.photoField] || []).length > 0
+                            ? <><Plus size={20} color="#0369A1" /><span style={{ fontSize: '0.75rem', color: '#0369A1', fontWeight: 700, marginTop: '4px' }}>Tambah Foto Lagi</span></>
+                            : <>{action.icon || <Camera size={28} color="#0369A1" />}<span style={{ fontSize: '0.82rem', color: '#0369A1', fontWeight: 700, marginTop: '8px' }}>Tap untuk upload foto bukti</span><span style={{ fontSize: '0.7rem', color: '#7DD3FC' }}>Bisa pilih banyak foto · Maks. 5MB/foto</span></>
+                          }
+                          <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, action.photoField)} />
+                        </label>
                       </div>
                     )}
 
@@ -671,8 +917,8 @@ const AdminOrderManagement = () => {
 
                     <button
                       onClick={() => handleOrderAction(action)}
-                      disabled={isThisUpdating || (action.requiresPhoto && !tempProofs[action.photoField])}
-                      style={{ width: '100%', padding: '14px', borderRadius: '14px', border: 'none', background: (action.requiresPhoto && !tempProofs[action.photoField]) ? '#CBD5E1' : '#064058', color: 'white', fontWeight: 800, fontSize: '0.95rem', cursor: isThisUpdating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(6,64,88,0.2)' }}
+                      disabled={isThisUpdating || (action.requiresPhoto && (!tempProofs[action.photoField] || tempProofs[action.photoField].length === 0))}
+                      style={{ width: '100%', padding: '14px', borderRadius: '14px', border: 'none', background: (action.requiresPhoto && (!tempProofs[action.photoField] || tempProofs[action.photoField].length === 0)) ? '#CBD5E1' : '#064058', color: 'white', fontWeight: 800, fontSize: '0.95rem', cursor: isThisUpdating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(6,64,88,0.2)' }}
                     >
                       {isThisUpdating ? <Clock size={18} className="spin" /> : <CheckCircle2 size={18} />}
                       {isThisUpdating ? 'Memproses...' : action.buttonLabel}

@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS orders (
     auto_shifted BOOLEAN DEFAULT FALSE,
     payment_method VARCHAR(50),
     payment_status VARCHAR(50) DEFAULT 'PENDING',
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (service_id) REFERENCES services(service_id)

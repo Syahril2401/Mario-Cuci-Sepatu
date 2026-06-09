@@ -47,6 +47,7 @@ const Profile = () => {
   const [newAddress, setNewAddress] = useState({ label: '', detail: '', latitude: null, longitude: null });
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState(null);
+  const [addressToDeleteId, setAddressToDeleteId] = useState(null);
   const [notification, setNotification] = useState({ show: false, message: '', type: 'info' });
 
   useEffect(() => {
@@ -55,7 +56,7 @@ const Profile = () => {
       setProfile(data);
       // Try to derive order stats from profile if available
       if (data.orders) {
-        const completedStatuses = ['RECEIVED', 'READY_DELIVERY', 'READY_PICKUP', 'ON_DELIVERY', 'SUDAH_DIAMBIL', 'FINISHED', 'COMPLETED'];
+        const completedStatuses = ['RECEIVED', 'READY_DELIVERY', 'READY_PICKUP', 'ON_DELIVERY', 'CUSTOMER_PICKED_UP', 'SUDAH_DIAMBIL', 'FINISHED', 'COMPLETED'];
         const cancelledStatuses = ['CANCELLED'];
         const total = data.orders.length;
         const active = data.orders.filter(o => !completedStatuses.includes(o.status?.toUpperCase()) && !cancelledStatuses.includes(o.status?.toUpperCase())).length;
@@ -65,7 +66,7 @@ const Profile = () => {
         // Fallback to fetch from order history
         orderService.getHistory().then(historyRes => {
           const orders = historyRes.data || [];
-          const completedStatuses = ['RECEIVED', 'READY_DELIVERY', 'READY_PICKUP', 'ON_DELIVERY', 'SUDAH_DIAMBIL', 'FINISHED', 'COMPLETED'];
+          const completedStatuses = ['RECEIVED', 'READY_DELIVERY', 'READY_PICKUP', 'ON_DELIVERY', 'CUSTOMER_PICKED_UP', 'SUDAH_DIAMBIL', 'FINISHED', 'COMPLETED'];
           const cancelledStatuses = ['CANCELLED'];
           const total = orders.length;
           const active = orders.filter(o => !completedStatuses.includes(o.status?.toUpperCase()) && !cancelledStatuses.includes(o.status?.toUpperCase())).length;
@@ -104,7 +105,19 @@ const Profile = () => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onloadend = () => setProfile(p => ({ ...p, profileImage: reader.result }));
+    reader.onloadend = () => {
+      const newImage = reader.result;
+      setProfile(p => ({ ...p, profileImage: newImage }));
+      // Immediately save and update authStore so navbar avatar refreshes
+      const updatedProfile = { ...profile, profileImage: newImage };
+      userService.updateProfile(updatedProfile).then(res => {
+        const currentToken = localStorage.getItem('token');
+        if (res.data && currentToken) login(res.data, currentToken);
+        setNotification({ show: true, message: 'Foto profil berhasil diperbarui!', type: 'success' });
+      }).catch(() => {
+        setNotification({ show: true, message: 'Gagal memperbarui foto profil.', type: 'error' });
+      });
+    };
     reader.readAsDataURL(file);
   };
 
@@ -155,9 +168,14 @@ const Profile = () => {
   };
 
   const deleteAddress = (id) => {
-    if (!window.confirm('Hapus alamat ini?')) return;
-    const updated = { ...profile, addresses: profile.addresses.filter(a => a.id !== id) };
+    setAddressToDeleteId(id);
+  };
+
+  const confirmDeleteAddress = () => {
+    if (!addressToDeleteId) return;
+    const updated = { ...profile, addresses: profile.addresses.filter(a => a.id !== addressToDeleteId) };
     setProfile(updated);
+    setAddressToDeleteId(null);
     userService.updateProfile(updated).then(res => {
       const t = localStorage.getItem('token');
       if (res.data && t) login(res.data, t);
@@ -463,23 +481,28 @@ const Profile = () => {
               </div>
 
               <div className="addr-modal-field">
-                <label className="addr-modal-label">Pilih Lokasi di Peta</label>
-                <MapPicker
-                  onLocationSelect={handleLocationSelect}
-                  initialLocation={editingAddressId ? { lat: newAddress.latitude, lng: newAddress.longitude } : null}
-                />
-              </div>
-
-              <div className="addr-modal-field">
-                <label className="addr-modal-label">Detail Alamat Lengkap</label>
+                <label className="addr-modal-label">Detail Alamat Lengkap <span style={{ color: '#ef4444' }}>*</span></label>
                 <textarea
                   className="addr-modal-textarea"
                   rows="3"
-                  placeholder="Pilih di peta atau ketik manual..."
+                  placeholder="Ketik alamat lengkap Anda... (Contoh: Jl. Merdeka No. 10, RT 02/RW 05, Surabaya)"
                   value={newAddress.detail}
                   onChange={e => setNewAddress(a => ({ ...a, detail: e.target.value }))}
                   required
                 />
+              </div>
+
+              <div className="addr-modal-field">
+                <label className="addr-modal-label" style={{ color: '#6b7280', fontSize: 12 }}>📍 Lokasi di Peta (opsional — untuk layanan pickup/delivery)</label>
+                <MapPicker
+                  onLocationSelect={handleLocationSelect}
+                  initialLocation={editingAddressId && newAddress.latitude ? { lat: newAddress.latitude, lng: newAddress.longitude } : null}
+                />
+                {newAddress.latitude && newAddress.longitude && (
+                  <p style={{ margin: '6px 0 0', fontSize: 11, color: '#059669', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    ✓ Koordinat tersimpan ({newAddress.latitude?.toFixed(4)}, {newAddress.longitude?.toFixed(4)})
+                  </p>
+                )}
               </div>
 
               <div className="addr-modal-actions">
@@ -518,6 +541,31 @@ const Profile = () => {
               </button>
               <button className="logout-confirm-yes" onClick={handleLogoutConfirm}>
                 Ya, Keluar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ══════════════════════════════════
+          9. DELETE ADDRESS CONFIRM MODAL
+      ══════════════════════════════════ */}
+      {addressToDeleteId !== null && (
+        <div
+          className="logout-confirm-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) setAddressToDeleteId(null); }}
+        >
+          <div className="logout-confirm-card" style={{ padding: '24px 20px', borderRadius: '24px' }}>
+            <div style={{ fontSize: 40, marginBottom: 12, textAlign: 'center' }}>⚠️</div>
+            <div className="logout-confirm-title">Hapus Alamat</div>
+            <p className="logout-confirm-sub">
+              Apakah Anda yakin ingin menghapus alamat ini? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="logout-confirm-actions">
+              <button className="logout-confirm-no" onClick={() => setAddressToDeleteId(null)}>
+                Batal
+              </button>
+              <button className="logout-confirm-yes" onClick={confirmDeleteAddress}>
+                Hapus
               </button>
             </div>
           </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { orderService, formatOrderId } from '../services/orderService';
-import { CheckCircle, ChevronLeft, CreditCard, Smartphone, Check, ShieldCheck, Clock, Info, AlertCircle, X } from 'lucide-react';
+import { CheckCircle, ChevronLeft, CreditCard, Smartphone, Check, ShieldCheck, Clock, Info, AlertCircle, X, Download } from 'lucide-react';
 import qrisImage from '../assets/qris.png';
 import './Pages.css';
 
@@ -46,7 +46,7 @@ const Payment = () => {
     try {
       const updatedOrder = {
         ...order,
-        status: 'MENUNGGU_VERIFIKASI',
+        status: 'WAITING_VERIFICATION',
         payment: {
           method: 'QRIS',
           status: 'PENDING_VERIFICATION',
@@ -221,11 +221,27 @@ const Payment = () => {
               style={{ width: '100%', maxWidth: '220px', display: 'block' }}
             />
           </div>
-          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{ backgroundColor: '#F8FAFC', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, color: '#64748B', border: '1px solid #E2E8F0' }}>GOPAY</span>
             <span style={{ backgroundColor: '#F8FAFC', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, color: '#64748B', border: '1px solid #E2E8F0' }}>OVO</span>
             <span style={{ backgroundColor: '#F8FAFC', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, color: '#64748B', border: '1px solid #E2E8F0' }}>DANA</span>
             <span style={{ backgroundColor: '#F8FAFC', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700, color: '#64748B', border: '1px solid #E2E8F0' }}>LINKAJA</span>
+          </div>
+
+          <div style={{ marginTop: '16px' }}>
+            <a 
+              href={qrisImage} 
+              download="QRIS-Mario-Cuci-Sepatu.png"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                padding: '10px 20px', borderRadius: '12px',
+                backgroundColor: '#F1F5F9', color: '#0F172A',
+                fontWeight: 700, fontSize: '0.85rem', border: '1px solid #E2E8F0',
+                textDecoration: 'none', cursor: 'pointer'
+              }}
+            >
+              <Download size={16} /> Simpan QR Code
+            </a>
           </div>
         </div>
 

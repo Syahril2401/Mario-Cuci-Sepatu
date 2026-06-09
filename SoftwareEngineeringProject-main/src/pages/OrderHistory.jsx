@@ -10,7 +10,7 @@ import {
 import './Pages.css';
 
 const StatusTimeline = ({ currentStatus, history, orderFlow }) => {
-  const steps = orderFlow || ["PENDING", "ANTRI", "PICKUP", "PROCESSING", "DELIVERED", "FINISHED"];
+  const steps = orderFlow || ["PENDING", "AWAITING_DROP_OFF", "WAITING_PICKUP", "PROCESSING", "DELIVERED", "FINISHED"];
 
   const currentIdx = steps.indexOf(currentStatus.toUpperCase());
 

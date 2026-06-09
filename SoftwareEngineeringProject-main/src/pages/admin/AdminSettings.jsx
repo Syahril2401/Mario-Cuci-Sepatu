@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import useAuthStore from '../../store/authStore';
-import { User, Settings, Lock, Bell, ChevronRight, Save } from 'lucide-react';
+import { User, Settings, Lock, Bell, ChevronRight, Save, Eye, EyeOff } from 'lucide-react';
 import './Admin.css';
 
 const AdminSettings = () => {
@@ -20,6 +20,7 @@ const AdminSettings = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [showPwd, setShowPwd] = useState({ current: false, new: false, confirm: false });
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -153,48 +154,66 @@ const AdminSettings = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
                   <label className="adm-field-label">Password Saat Ini</label>
-                  <input 
-                    type="password" 
-                    className="adm-field-input" 
-                    placeholder="Masukkan password saat ini untuk mengubah"
-                    value={formData.currentPassword}
-                    onChange={(e) => {
-                      setFormData({...formData, currentPassword: e.target.value});
-                      setFieldErrors(p => ({...p, currentPassword: ''}));
-                    }}
-                    style={fieldErrors.currentPassword ? { borderColor: '#ef4444' } : {}}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type={showPwd.current ? 'text' : 'password'}
+                      className="adm-field-input" 
+                      placeholder="Masukkan password saat ini untuk mengubah"
+                      value={formData.currentPassword}
+                      onChange={(e) => {
+                        setFormData({...formData, currentPassword: e.target.value});
+                        setFieldErrors(p => ({...p, currentPassword: ''}));
+                      }}
+                      style={{ paddingRight: '42px', ...(fieldErrors.currentPassword ? { borderColor: '#ef4444' } : {}) }}
+                    />
+                    <button type="button" onClick={() => setShowPwd(p => ({...p, current: !p.current}))}
+                      style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0, display: 'flex' }}>
+                      {showPwd.current ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                   {fieldErrors.currentPassword && <span style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px', fontWeight: 600 }}>{fieldErrors.currentPassword}</span>}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div>
                     <label className="adm-field-label">Password Baru</label>
-                    <input 
-                      type="password" 
-                      className="adm-field-input" 
-                      placeholder="Minimal 8 karakter"
-                      value={formData.newPassword}
-                      onChange={(e) => {
-                        setFormData({...formData, newPassword: e.target.value});
-                        setFieldErrors(p => ({...p, newPassword: ''}));
-                      }}
-                      style={fieldErrors.newPassword ? { borderColor: '#ef4444' } : {}}
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <input 
+                        type={showPwd.new ? 'text' : 'password'}
+                        className="adm-field-input" 
+                        placeholder="Minimal 8 karakter"
+                        value={formData.newPassword}
+                        onChange={(e) => {
+                          setFormData({...formData, newPassword: e.target.value});
+                          setFieldErrors(p => ({...p, newPassword: ''}));
+                        }}
+                        style={{ paddingRight: '42px', ...(fieldErrors.newPassword ? { borderColor: '#ef4444' } : {}) }}
+                      />
+                      <button type="button" onClick={() => setShowPwd(p => ({...p, new: !p.new}))}
+                        style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0, display: 'flex' }}>
+                        {showPwd.new ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                     {fieldErrors.newPassword && <span style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px', fontWeight: 600 }}>{fieldErrors.newPassword}</span>}
                   </div>
                   <div>
                     <label className="adm-field-label">Konfirmasi Password Baru</label>
-                    <input 
-                      type="password" 
-                      className="adm-field-input" 
-                      placeholder="Ketik ulang password baru"
-                      value={formData.confirmPassword}
-                      onChange={(e) => {
-                        setFormData({...formData, confirmPassword: e.target.value});
-                        setFieldErrors(p => ({...p, confirmPassword: ''}));
-                      }}
-                      style={fieldErrors.confirmPassword ? { borderColor: '#ef4444' } : {}}
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <input 
+                        type={showPwd.confirm ? 'text' : 'password'}
+                        className="adm-field-input" 
+                        placeholder="Ketik ulang password baru"
+                        value={formData.confirmPassword}
+                        onChange={(e) => {
+                          setFormData({...formData, confirmPassword: e.target.value});
+                          setFieldErrors(p => ({...p, confirmPassword: ''}));
+                        }}
+                        style={{ paddingRight: '42px', ...(fieldErrors.confirmPassword ? { borderColor: '#ef4444' } : {}) }}
+                      />
+                      <button type="button" onClick={() => setShowPwd(p => ({...p, confirm: !p.confirm}))}
+                        style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0, display: 'flex' }}>
+                        {showPwd.confirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                     {fieldErrors.confirmPassword && <span style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px', fontWeight: 600 }}>{fieldErrors.confirmPassword}</span>}
                   </div>
                 </div>

@@ -101,6 +101,7 @@ const Register = () => {
               onChange={(e) => { setName(e.target.value); setFieldErrors(p => ({...p, name: ''})); }}
               placeholder="Masukkan nama lengkap"
               className={fieldErrors.name ? 'input-error' : ''}
+              autoComplete="name"
             />
             {fieldErrors.name && <span className="field-error-msg">{fieldErrors.name}</span>}
           </div>
@@ -112,6 +113,7 @@ const Register = () => {
               onChange={(e) => { setEmail(e.target.value); setFieldErrors(p => ({...p, email: ''})); }}
               placeholder="Masukkan email"
               className={fieldErrors.email ? 'input-error' : ''}
+              autoComplete="off"
             />
             {fieldErrors.email && <span className="field-error-msg">{fieldErrors.email}</span>}
           </div>
@@ -124,6 +126,7 @@ const Register = () => {
                 onChange={(e) => { setPassword(e.target.value); setFieldErrors(p => ({...p, password: ''})); }}
                 placeholder="Buat password (min. 6 karakter)"
                 className={fieldErrors.password ? 'input-error' : ''}
+                autoComplete="new-password"
               />
               <button type="button" className="password-toggle" onClick={() => setShowPassword(p => !p)}>
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

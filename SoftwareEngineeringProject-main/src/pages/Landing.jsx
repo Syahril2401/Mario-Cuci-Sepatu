@@ -259,6 +259,48 @@ const Landing = () => {
     }).catch(err => console.error("Failed to load landing config", err));
   }, []);
 
+  // Static fallback services — shown when API returns < 3 services
+  const FALLBACK_SERVICES = [
+    {
+      service_id: 'fallback-1',
+      serviceName: 'Cuci Regular',
+      description: 'Pembersihan menyeluruh dengan sabun khusus sepatu, cocok untuk pemakaian sehari-hari.',
+      price: 35000,
+      duration: '2-3',
+      type: 'sepatu',
+      image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=800',
+    },
+    {
+      service_id: 'fallback-2',
+      serviceName: 'Deep Cleaning Premium',
+      description: 'Pembersihan mendalam hingga ke sela-sela dan sol, termasuk treatment anti-bau khusus.',
+      price: 65000,
+      duration: '3-4',
+      type: 'sepatu',
+      image: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&q=80&w=800',
+    },
+    {
+      service_id: 'fallback-3',
+      serviceName: 'Cuci Tas',
+      description: 'Perawatan tas berbahan kulit, kanvas, dan bahan lainnya secara profesional dan aman.',
+      price: 50000,
+      duration: '2-3',
+      type: 'tas',
+      image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&q=80&w=800',
+    },
+  ];
+
+  const displayServices = (() => {
+    // If admin has explicitly selected services, show ONLY those
+    if (config?.services?.selectedIds?.length > 0) {
+      return services.filter(s => config.services.selectedIds.includes(s.service_id));
+    }
+    // If services loaded from API, show up to 3
+    if (services.length > 0) return services.slice(0, 3);
+    // Only use fallback when nothing is loaded yet (loading state)
+    return FALLBACK_SERVICES;
+  })();
+
   const handleNavItemClick = (item) => {
     setIsMenuOpen(false);
     if (item.action === 'scroll') {
@@ -288,12 +330,13 @@ const Landing = () => {
     }
   };
 
+  // Use config URLs if available, fallback to defaults
   const handleWhatsAppClick = () => {
-    window.open("https://wa.me/6281233981688", "_blank");
+    window.open(config?.footer?.whatsappLink || "https://wa.me/6281233981688", "_blank");
   };
 
   const handleInstagramClick = () => {
-    window.open("https://instagram.com/mariocucisepatu", "_blank");
+    window.open(config?.footer?.instagramLink || "https://instagram.com/mariocucisepatu", "_blank");
   };
 
   return (
@@ -344,18 +387,22 @@ const Landing = () => {
             <div className="why-card premium-card">
               <div className="why-icon"><Sparkles size={20} /></div>
               <h3>Deep Cleaning</h3>
+              <p className="why-desc">Proses cuci mendalam hingga ke sela-sela sepatu menggunakan teknik dan bahan profesional berkualitas tinggi.</p>
             </div>
             <div className="why-card premium-card">
               <div className="why-icon"><Truck size={20} /></div>
               <h3>Pick &amp; Drop</h3>
+              <p className="why-desc">Layanan jemput-antar sepatu ke alamat Anda dalam radius 15 KM — praktis tanpa perlu keluar rumah.</p>
             </div>
             <div className="why-card premium-card">
               <div className="why-icon"><Timer size={20} /></div>
               <h3>Fast Service</h3>
+              <p className="why-desc">Proses selesai dalam 2–3 hari kerja dengan notifikasi real-time di setiap tahap pengerjaan.</p>
             </div>
             <div className="why-card premium-card">
               <div className="why-icon"><Camera size={20} /></div>
               <h3>Foto Bukti</h3>
+              <p className="why-desc">Kami mendokumentasikan setiap proses — dari sebelum hingga sesudah — untuk ketenangan dan kepercayaan Anda.</p>
             </div>
           </div>
         </section>
@@ -366,14 +413,14 @@ const Landing = () => {
           <p className="section-subtitle-premium">{config?.services?.subtitle || 'Solusi tepat untuk setiap jenis sepatu Anda.'}</p>
 
           <div className="services-grid">
-            {services.filter(s => config?.services?.selectedIds ? config.services.selectedIds.includes(s.service_id) : true).slice(0, 3).map((service, index) => {
+            {displayServices.map((service, index) => {
               const activePromo = promoService.getActivePromoForService(service, promos);
               const discountedPrice = promoService.calculateDiscountedPrice(service.price, activePromo);
 
               return (
                 <div key={service.service_id} className="service-card-premium premium-card" onClick={() => navigate('/login')}>
                   <div className="card-img-wrapper">
-                    <img src={service.image} alt={service.serviceName} className="card-img" loading="lazy" decoding="async" />
+                    <img src={service.image && typeof service.image === 'string' && (service.image.startsWith('http') || service.image.startsWith('data:')) ? service.image : 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=800'} alt={service.serviceName} className="card-img" loading="lazy" decoding="async" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=800'; }} />
                     {activePromo ? (
                       <div className="card-badge" style={{ backgroundColor: '#F59E0B' }}>PROMO {activePromo.percentage}%</div>
                     ) : (
@@ -389,11 +436,11 @@ const Landing = () => {
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                         {activePromo && (
                           <span style={{ fontSize: '0.8rem', color: '#9CA3AF', textDecoration: 'line-through' }}>
-                            Rp {service.price?.toLocaleString('id-ID')}
+                            Rp {Number(service.price || 0).toLocaleString('id-ID')}
                           </span>
                         )}
                         <span className="price-value" style={{ color: activePromo ? '#F59E0B' : 'var(--primary)' }}>
-                          Rp {discountedPrice?.toLocaleString('id-ID')}
+                          Rp {Number(discountedPrice || 0).toLocaleString('id-ID')}
                         </span>
                       </div>
                       <button className="btn-premium" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>Pesan</button>

@@ -305,7 +305,7 @@ const AdminLandingConfig = () => {
                   <label key={s.service_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 8, background: isChecked ? 'var(--secondary)' : '#f8fafc', borderRadius: 8, cursor: 'pointer' }}>
                     <input type="checkbox" checked={isChecked} onChange={() => handleServiceSelect(s.service_id)} />
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>{s.serviceName}</span>
-                    <span style={{ fontSize: 11, color: '#64748b', marginLeft: 'auto' }}>Rp {s.price?.toLocaleString('id-ID')}</span>
+                    <span style={{ fontSize: 11, color: '#64748b', marginLeft: 'auto' }}>Rp {Number(s.price || 0).toLocaleString('id-ID')}</span>
                   </label>
                 );
               })}
@@ -315,12 +315,12 @@ const AdminLandingConfig = () => {
           <div className="services-grid">
             {services.filter(s => (config.services.selectedIds || []).includes(s.service_id)).map(service => (
               <div key={service.service_id} className="service-card-premium premium-card" style={{ opacity: 0.8, pointerEvents: 'none' }}>
-                <div className="card-img-wrapper"><img src={service.image} alt={service.serviceName} className="card-img" /></div>
+                <div className="card-img-wrapper"><img src={service.image && service.image !== 'null' ? service.image : 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=800'} alt={service.serviceName} className="card-img" /></div>
                 <div className="card-body">
                   <h3>{service.serviceName}</h3>
                   <p className="desc">{service.description}</p>
                   <div className="card-footer">
-                    <span className="price-value" style={{ color: 'var(--primary)' }}>Rp {service.price?.toLocaleString('id-ID')}</span>
+                    <span className="price-value" style={{ color: 'var(--primary)' }}>Rp {Number(service.price || 0).toLocaleString('id-ID')}</span>
                     <button className="btn-premium" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>Pesan</button>
                   </div>
                 </div>

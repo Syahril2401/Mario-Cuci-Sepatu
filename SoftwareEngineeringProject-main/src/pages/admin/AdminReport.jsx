@@ -24,8 +24,12 @@ const getPrice = (o) => {
   return p || 0;
 };
 
-const isCounted = (o) =>
-  ['FINISHED', 'COMPLETED'].includes(o.status);
+const isCounted = (o) => {
+  const s = (o.status || '').toUpperCase();
+  // Exclude unpaid/unverified and cancelled orders. Everything else is considered "paid".
+  const excluded = ['PENDING', 'WAITING_VERIFICATION', 'MENUNGGU_VERIFIKASI', 'CANCELLED'];
+  return !excluded.includes(s) && s !== '';
+};
 
 // ─── Component ───────────────────────────────────────────────────────────────
 const AdminReport = () => {
@@ -33,12 +37,10 @@ const AdminReport = () => {
   const [allServices, setAllServices] = useState([]);
   const [range, setRange] = useState('monthly');
   const [notification, setNotification] = useState({ show: false, message: '', type: 'loading' });
-  // For daily view: start of the selected week (Monday). Default = this week's Monday.
+  // For daily view: start date of the 7-day range. Default = 6 days ago so it ends today.
   const [selectedWeekStart, setSelectedWeekStart] = useState(() => {
     const d = new Date();
-    const day = d.getDay();
-    const offset = day === 0 ? 6 : day - 1;
-    d.setDate(d.getDate() - offset);
+    d.setDate(d.getDate() - 6);
     d.setHours(0, 0, 0, 0);
     return d.toISOString().split('T')[0]; // 'YYYY-MM-DD'
   });
@@ -67,22 +69,32 @@ const AdminReport = () => {
     const s = new Date(now);
     const e = new Date(now);
 
-    // ── HARIAN: Senin–Minggu (pekan yang dipilih) ────────────────────────────
+    // ── HARIAN: 7 Hari (mulai dari tanggal yang dipilih) ────────────────────────────
     if (range === 'daily') {
-      const monday = new Date(selectedWeekStart + 'T00:00:00');
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6);
-      sunday.setHours(23, 59, 59, 999);
-      const labels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+      const startDay = new Date(selectedWeekStart + 'T00:00:00');
+      const endDay = new Date(startDay);
+      endDay.setDate(startDay.getDate() + 6);
+      endDay.setHours(23, 59, 59, 999);
+      
+      const labels = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(startDay);
+        d.setDate(startDay.getDate() + i);
+        labels.push(DAY_NAMES[d.getDay()]);
+      }
+
       const getter = (order) => {
-        const d = order.created_at || order.createdAt;
+        const d = order.order_date || order.created_at || order.createdAt;
         if (!d) return null;
-        const day = new Date(d).getDay(); // 0=Sun
-        return day === 0 ? 6 : day - 1;  // Mon=0 … Sun=6
+        const oD = new Date(d); oD.setHours(0,0,0,0);
+        const sD = new Date(startDay); sD.setHours(0,0,0,0);
+        const diff = Math.round((oD - sD) / 86400000);
+        return diff >= 0 && diff <= 6 ? diff : null;
       };
+      
       return {
-        startDate: monday, endDate: sunday, chartLabels: labels, chartGetter: getter,
-        rangeLabel: `${monday.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} – ${sunday.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`
+        startDate: startDay, endDate: endDay, chartLabels: labels, chartGetter: getter,
+        rangeLabel: `${startDay.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} – ${endDay.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`
       };
     }
 
@@ -92,7 +104,7 @@ const AdminReport = () => {
       e.setMonth(e.getMonth() + 1); e.setDate(0); e.setHours(23, 59, 59, 999);
       const labels = ['Mgg 1', 'Mgg 2', 'Mgg 3', 'Mgg 4'];
       const getter = (order) => {
-        const d = order.created_at || order.createdAt;
+        const d = order.order_date || order.created_at || order.createdAt;
         if (!d) return null;
         const weekIdx = Math.floor((new Date(d).getDate() - 1) / 7);
         return Math.min(weekIdx, 3); // clamp to 0–3
@@ -109,7 +121,7 @@ const AdminReport = () => {
       e.setMonth(11); e.setDate(31); e.setHours(23, 59, 59, 999);
       const labels = MONTH_NAMES_SHORT;
       const getter = (order) => {
-        const d = order.created_at || order.createdAt;
+        const d = order.order_date || order.created_at || order.createdAt;
         return d ? new Date(d).getMonth() : null; // 0=Jan … 11=Des
       };
       return {
@@ -125,7 +137,7 @@ const AdminReport = () => {
     e.setFullYear(currentYear, 11, 31); e.setHours(23, 59, 59, 999);
     const labels = Array.from({ length: 10 }, (_, i) => String(startYear + i));
     const getter = (order) => {
-      const d = order.created_at || order.createdAt;
+      const d = order.order_date || order.created_at || order.createdAt;
       if (!d) return null;
       const yr = new Date(d).getFullYear();
       const idx = yr - startYear;
@@ -140,7 +152,7 @@ const AdminReport = () => {
   // ── Filter orders to selected time range ────────────────────────────────────
   const filteredOrders = useMemo(() =>
     orders.filter(o => {
-      const d = o.created_at || o.createdAt;
+      const d = o.order_date || o.created_at || o.createdAt;
       if (!d) return false;
       const t = new Date(d);
       return t >= startDate && t <= endDate;
@@ -150,7 +162,7 @@ const AdminReport = () => {
   const totalRevenue = revenueOrders.reduce((s, o) => s + getPrice(o), 0);
   const totalOrders = revenueOrders.length;
   const avgOrder = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
-  const completedCount = revenueOrders.filter(o => o.status === 'FINISHED' || o.status === 'RECEIVED' || o.status === 'SUDAH_DIAMBIL').length;
+  const completedCount = revenueOrders.filter(o => o.status === 'FINISHED' || o.status === 'RECEIVED' || o.status === 'CUSTOMER_PICKED_UP').length;
   const cancelledCount = filteredOrders.filter(o => o.status === 'CANCELLED').length;
 
   // ── Chart data ──────────────────────────────────────────────────────────────
@@ -175,7 +187,7 @@ const AdminReport = () => {
           o.customerName || '',
           STATUS_LABELS[o.status] || o.status,
           getPrice(o),
-          new Date(o.created_at || o.createdAt).toLocaleDateString('id-ID'),
+          new Date(o.order_date || o.created_at || o.createdAt).toLocaleDateString('id-ID'),
         ])
       ];
       const csv = rows.map(r => r.join(',')).join('\n');
@@ -367,30 +379,15 @@ const AdminReport = () => {
           {range === 'daily' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, padding: '8px 12px', background: '#f0f9ff', borderRadius: 10, border: '1px solid #bae6fd' }}>
               <Calendar size={14} color="#0369a1" style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#0369a1', whiteSpace: 'nowrap' }}>Pilih pekan:</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#0369a1', whiteSpace: 'nowrap' }}>Pilih tanggal:</span>
               <input
-                type="week"
+                type="date"
                 style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 11, fontWeight: 600, color: '#0f172a', outline: 'none', cursor: 'pointer' }}
-                value={(() => {
-                  // Convert YYYY-MM-DD (monday) to YYYY-Www format for <input type="week">
-                  const d = new Date(selectedWeekStart + 'T00:00:00');
-                  // ISO week number
-                  const startOfYear = new Date(d.getFullYear(), 0, 1);
-                  const weekNum = Math.ceil(((d - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
-                  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
-                })()}
+                value={selectedWeekStart}
                 onChange={e => {
-                  // Parse YYYY-Www back to Monday date
-                  const [yearStr, weekStr] = e.target.value.split('-W');
-                  const year = parseInt(yearStr);
-                  const week = parseInt(weekStr);
-                  // ISO week: Jan 4 is always in week 1
-                  const jan4 = new Date(year, 0, 4);
-                  const startOfWeek1 = new Date(jan4);
-                  startOfWeek1.setDate(jan4.getDate() - (jan4.getDay() === 0 ? 6 : jan4.getDay() - 1));
-                  const monday = new Date(startOfWeek1);
-                  monday.setDate(startOfWeek1.getDate() + (week - 1) * 7);
-                  setSelectedWeekStart(monday.toISOString().split('T')[0]);
+                  const d = new Date(e.target.value);
+                  if (isNaN(d.getTime())) return;
+                  setSelectedWeekStart(d.toISOString().split('T')[0]);
                 }}
               />
               <span style={{ fontSize: 10, color: '#0369a1', fontWeight: 600, whiteSpace: 'nowrap' }}>{rangeLabel}</span>
@@ -455,7 +452,7 @@ const AdminReport = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {revenueOrders.slice(0, 15).map(o => {
               const sc = getStatusColor(o.status);
-              const dateStr = new Date(o.created_at || o.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: range === 'yearly' ? 'numeric' : undefined });
+              const dateStr = new Date(o.order_date || o.created_at || o.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: range === 'yearly' ? 'numeric' : undefined });
               return (
                 <div key={o.order_id} className="adm-activity-item">
                   <div className="adm-avatar" style={{ background: '#e8f4fb', borderRadius: 12 }}>

@@ -16,13 +16,13 @@ const AdminPromoManagement = () => {
     startDate: new Date().toISOString().split('T')[0], endDate:'', status:'active'
   });
 
-  useEffect(() => { loadData(); }, []);
-
   const loadData = async () => {
     const [p, s] = await Promise.all([promoService.getPromos(), serviceService.getServicesList()]);
     setPromos(p.data || []);
     setServices(s.data || []);
   };
+
+  useEffect(() => { loadData(); }, []);
 
   const openAdd = () => {
     setEditingId(null);

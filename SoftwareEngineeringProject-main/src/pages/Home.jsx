@@ -42,13 +42,52 @@ const PROMO_SLIDES = [
 const AVATAR_COLORS = ['#064058', '#6d28d9', '#0369a1', '#be185d', '#0f766e'];
 
 // ─── Active Order Mini Tracker ───────────────────────────────
-const ActiveOrderCard = ({ order, onViewStatus }) => {
+// Map statuses that may appear in the wrong flow context
+const CROSS_FLOW_MAP = {
+  'WAITING_PICKUP':    'WAITING_DROP_OFF',   // Courier Pickup ↔ Self Drop
+  'WAITING_DROP_OFF':  'WAITING_PICKUP',
+  'PICKED_UP_BY_ADMIN':'STORE_RECEIVED',     // Received at store ↔ Picked up
+  'STORE_RECEIVED':    'PICKED_UP_BY_ADMIN',
+};
+
+const normalizeStatusForFlow = (rawStatus, flow) => {
+  let s = rawStatus === 'PENDING' ? 'WAITING_VERIFICATION' : rawStatus;
+  if (!flow.includes(s)) {
+    const alt = CROSS_FLOW_MAP[s];
+    if (alt && flow.includes(alt)) s = alt;
+  }
+  return s;
+};
+
+const FINISH_STATUSES = ['RECEIVED', 'CUSTOMER_PICKED_UP', 'DELIVERED'];
+
+const ActiveOrderCard = ({ order, onViewStatus, onFinish }) => {
   const flow = getStatusFlow(order);
-  const current = (order.status || '').toUpperCase();
+  const rawStatus = (order.status || '').toUpperCase();
+  const current = normalizeStatusForFlow(rawStatus, flow);
   const idx = flow.indexOf(current);
-  const pct = flow.length > 1 ? Math.round((idx / (flow.length - 1)) * 100) : 0;
-  // show max 4 steps for display
-  const displaySteps = flow.length <= 4 ? flow : [flow[0], flow[Math.floor(flow.length / 3)], flow[Math.floor(2 * flow.length / 3)], flow[flow.length - 1]];
+  const safeIdx = idx === -1 ? 0 : idx;
+  const pct = flow.length > 1 ? Math.round((safeIdx / (flow.length - 1)) * 100) : 0;
+  
+  // show max 4 steps — always include the current step so active dot is always visible
+  const buildDisplaySteps = () => {
+    if (flow.length <= 4) return flow;
+    const candidates = [flow[0], flow[Math.floor(flow.length / 3)], flow[Math.floor(2 * flow.length / 3)], flow[flow.length - 1]];
+    if (safeIdx > 0 && !candidates.includes(current)) {
+      // Replace the inner candidate closest to current index (never replace first/last)
+      const candIdxs = candidates.map(s => flow.indexOf(s));
+      let closest = 1;
+      let minDist = Infinity;
+      candIdxs.forEach((ci, i) => {
+        const dist = Math.abs(ci - safeIdx);
+        if (dist < minDist && i !== 0 && i !== 3) { minDist = dist; closest = i; }
+      });
+      candidates[closest] = current;
+    }
+    return candidates;
+  };
+  const displaySteps = buildDisplaySteps();
+  const statusLabel = STATUS_LABELS[order.status] || STATUS_LABELS[current] || order.status;
 
   return (
     <div className="active-order-card">
@@ -60,10 +99,13 @@ const ActiveOrderCard = ({ order, onViewStatus }) => {
         <span className="aoc-id">{order.order_id}</span>
       </div>
 
-      <div className="aoc-status-badge">
-        <Loader size={13} className="aoc-spin" />
-        {STATUS_LABELS[order.status] || order.status}
-      </div>
+      {/* Status label — only shows when we have a valid label */}
+      {statusLabel && (
+        <div className="aoc-status-badge">
+          <Loader size={13} className="aoc-spin" />
+          {statusLabel}
+        </div>
+      )}
 
       {/* Progress bar */}
       <div className="aoc-progress-wrap">
@@ -74,8 +116,8 @@ const ActiveOrderCard = ({ order, onViewStatus }) => {
       <div className="aoc-steps">
         {displaySteps.map((step, i) => {
           const stepIdx = flow.indexOf(step);
-          const done = stepIdx < idx;
-          const active = stepIdx === idx;
+          const done = stepIdx < safeIdx;
+          const active = stepIdx === safeIdx;
           return (
             <div key={step} className={`aoc-step ${done ? 'done' : active ? 'active' : ''}`}>
               <div className="aoc-step-dot">
@@ -86,6 +128,15 @@ const ActiveOrderCard = ({ order, onViewStatus }) => {
           );
         })}
       </div>
+
+      {FINISH_STATUSES.includes((order.status || '').toUpperCase()) && (
+        <button
+          className="aoc-finish-btn"
+          onClick={(e) => { e.stopPropagation(); onFinish && onFinish(order); }}
+        >
+          <CheckCircle size={14} /> Selesaikan Pesanan
+        </button>
+      )}
 
       <div className="aoc-footer">
         <span className="aoc-est">🗓 Est: {order.delivery_date || 'N/A'}</span>
@@ -148,38 +199,61 @@ const Home = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedType, setSelectedType] = useState('all');
+  const [showFinishModal, setShowFinishModal] = useState(null);
+  const [isFinishing, setIsFinishing] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
-  useEffect(() => {
-    const fetchAll = async () => {
-      try {
-        const [servicesRes, promosRes, ordersRes] = await Promise.all([
-          serviceService.getServicesList(),
-          promoService.getPromos(),
-          orderService.getActiveStatus(),
-        ]);
-        setServices(servicesRes.data?.data || servicesRes.data || []);
-        setPromos(promosRes.data || []);
-        setActiveOrders((ordersRes.data || []).filter(o => {
-          const s = (o.status || '').toUpperCase();
-          return !['FINISHED', 'CANCELLED', 'COMPLETED', 'RECEIVED', 'SUDAH_DIAMBIL'].includes(s);
-        }));
-      } catch (err) {
-        console.error('Fetch error:', err);
-        setError('Gagal memuat layanan. Coba refresh halaman.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchAll();
+  const fetchAll = useCallback(async () => {
+    try {
+      const [servicesRes, promosRes, ordersRes] = await Promise.all([
+        serviceService.getServicesList(),
+        promoService.getPromos(),
+        orderService.getActiveStatus(),
+      ]);
+      setServices(servicesRes.data?.data || servicesRes.data || []);
+      setPromos(promosRes.data || []);
+      setActiveOrders((ordersRes.data || []).filter(o => {
+        const s = (o.status || '').toUpperCase();
+        return !['FINISHED', 'CANCELLED', 'COMPLETED', 'SUDAH_DIAMBIL'].includes(s);
+      }));
+    } catch (err) {
+      console.error('Fetch error:', err);
+      setError('Gagal memuat layanan. Coba refresh halaman.');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const handleFinishOrder = async () => {
+    if (!showFinishModal) return;
+    setIsFinishing(true);
+    try {
+      await orderService.updateOrder({ ...showFinishModal, status: 'FINISHED', customer_confirmed: true });
+      setShowFinishModal(null);
+      fetchAll();
+    } catch (err) {
+      alert(err.message || 'Gagal menyelesaikan pesanan');
+    } finally {
+      setIsFinishing(false);
+    }
+  };
 
   const handleOrderClick = () => {
     const section = document.getElementById('services-section');
     if (section) {
       section.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const handleServiceClick = (service) => {
+    if (user && user.role === 'admin') {
+      alert('Admin tidak diperbolehkan untuk membuat pesanan.');
+      return;
+    }
+    navigate('/checkout', { state: { service } });
   };
 
   const handleQuickAction = (action) => {
@@ -202,6 +276,7 @@ const Home = () => {
   const latestActiveOrder = activeOrders[0] || null;
 
   return (
+    <>
     <div className="home-root">
 
       {/* ══ 1. HERO ══════════════════════════════════════ */}
@@ -234,7 +309,11 @@ const Home = () => {
       {/* ══ 2. ACTIVE ORDER TRACKER ══════════════════════ */}
       {latestActiveOrder && (
         <div className="home-px anim-section">
-          <ActiveOrderCard order={latestActiveOrder} onViewStatus={() => navigate('/order-status')} />
+          <ActiveOrderCard
+            order={latestActiveOrder}
+            onViewStatus={() => navigate('/order-status')}
+            onFinish={(order) => setShowFinishModal(order)}
+          />
         </div>
       )}
 
@@ -288,11 +367,11 @@ const Home = () => {
           const isNew = idx === 2;
 
           return (
-            <div key={service.service_id} className="svc-card" onClick={() => navigate('/checkout', { state: { service } })}>
-              <div className="svc-img-wrap">
-                {service.image
-                  ? <img src={service.image} alt={service.serviceName} className="svc-img" loading="lazy" decoding="async" />
-                  : <div className="svc-img-placeholder"><span>👟</span></div>
+            <div key={service.service_id} className="svc-card" onClick={() => handleServiceClick(service)}>
+              <div className="svc-img-wrapper">
+                {service.image && typeof service.image === 'string' && (service.image.startsWith('http') || service.image.startsWith('data:'))
+                  ? <img src={service.image} alt={service.serviceName} className="svc-img" loading="lazy" decoding="async" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=800'; }} />
+                  : <div className="svc-img-placeholder">👟</div>
                 }
                 {activePromo && <div className="svc-badge promo">🔥 {activePromo.percentage}% OFF</div>}
                 {isBestSeller && !activePromo && <div className="svc-badge bestseller">⭐ Terlaris</div>}
@@ -312,14 +391,14 @@ const Home = () => {
 
                 <div className="svc-price-block">
                   {activePromo && (
-                    <span className="svc-price-original">Rp {service.price?.toLocaleString('id-ID')}</span>
+                    <span className="svc-price-original">Rp {Number(service.price || 0).toLocaleString('id-ID')}</span>
                   )}
                   <span className={`svc-price-final ${activePromo ? 'promo' : 'normal'}`}>
-                    Rp {discountedPrice?.toLocaleString('id-ID')}
+                    Rp {Number(discountedPrice || 0).toLocaleString('id-ID')}
                   </span>
                 </div>
 
-                <button className="svc-order-btn" onClick={e => { e.stopPropagation(); navigate('/checkout', { state: { service } }); }}>
+                <button className="svc-order-btn" onClick={e => { e.stopPropagation(); handleServiceClick(service); }}>
                   Order
                 </button>
               </div>
@@ -396,6 +475,52 @@ const Home = () => {
       </div>
 
     </div>
+
+      {/* ══ Finish Confirmation Modal ═══════════════════ */}
+      {showFinishModal && (
+        <div
+          onClick={() => setShowFinishModal(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 3000,
+            background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white', borderRadius: 24, padding: 24,
+              width: '100%', maxWidth: 320, textAlign: 'center',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+            }}
+          >
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <CheckCircle size={32} color="#10b981" />
+            </div>
+            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 800, color: '#111827' }}>Selesaikan Pesanan?</h3>
+            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#6b7280', lineHeight: 1.5 }}>
+              Apakah Anda sudah menerima barang dengan baik? Status pesanan akan diubah menjadi <strong>Selesai</strong>.
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => setShowFinishModal(null)}
+                style={{ flex: 1, padding: 12, borderRadius: 12, background: '#F3F4F6', color: '#374151', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleFinishOrder}
+                disabled={isFinishing}
+                style={{ flex: 1, padding: 12, borderRadius: 12, background: '#10b981', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: 13, opacity: isFinishing ? 0.7 : 1 }}
+              >
+                {isFinishing ? 'Memproses...' : 'Ya, Selesai'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

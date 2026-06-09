@@ -3,6 +3,7 @@ import { serviceService } from '../../services/serviceService';
 import { promoService } from '../../services/promoService';
 import { X, Image as ImageIcon, Edit2, Trash2, Plus, Search, Filter, Clock, Star, Tag } from 'lucide-react';
 import './Admin.css';
+import Notification from '../../components/Notification';
 
 const AdminServiceManagement = () => {
   const [services, setServices] = useState([]);
@@ -14,6 +15,8 @@ const AdminServiceManagement = () => {
   const [formData, setFormData] = useState({ serviceName: '', description: '', price: '', duration: '', image: '', type: 'sepatu' });
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [promoData, setPromoData] = useState({ name: '', percentage: '', startDate: new Date().toISOString().split('T')[0], endDate: '', targetType: 'service', targetId: '' });
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
 
   useEffect(() => { loadData(); }, []);
 
@@ -23,8 +26,8 @@ const AdminServiceManagement = () => {
     setPromos(pRes.data || []);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Hapus layanan ini?')) { await serviceService.deleteService(id); loadData(); }
+  const handleDelete = (id) => {
+    setConfirmDeleteId(id);
   };
 
   const openAdd = () => {
@@ -35,7 +38,7 @@ const AdminServiceManagement = () => {
 
   const openEdit = (svc) => {
     setEditingId(svc.service_id || svc.id);
-    setFormData({ serviceName: svc.serviceName, description: svc.description, price: svc.price || 0, duration: svc.duration || '', image: svc.image || '', type: svc.type || 'sepatu' });
+    setFormData({ serviceName: svc.serviceName, description: svc.description, price: Number(svc.price) || 0, duration: svc.duration || '', image: svc.image || '', type: svc.type || 'sepatu' });
     setShowModal(true);
   };
 
@@ -152,8 +155,8 @@ const AdminServiceManagement = () => {
               <div key={svc.service_id || svc.id} className="adm-svc-card adm-fade2">
                 {/* Image */}
                 <div style={{ position: 'relative' }}>
-                  {svc.image && !svc.image.includes('placeholder')
-                    ? <img src={svc.image} alt={svc.serviceName} className="adm-svc-img" />
+                  {svc.image && typeof svc.image === 'string' && (svc.image.startsWith('http') || svc.image.startsWith('data:'))
+                    ? <img src={svc.image} alt={svc.serviceName} className="adm-svc-img" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=800'; }} />
                     : <div className="adm-svc-img-placeholder">👟</div>
                   }
                   {activePromo && (
@@ -187,16 +190,16 @@ const AdminServiceManagement = () => {
                         </span>
                       </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      {activePromo && (
-                        <div style={{ fontSize: 11, color: '#94a3b8', textDecoration: 'line-through', lineHeight: 1 }}>
-                          Rp {(svc.price || 0).toLocaleString('id-ID')}
-                        </div>
-                      )}
-                      <div style={{ fontSize: 17, fontWeight: 900, color: activePromo ? '#dc2626' : '#064058', lineHeight: 1.2 }}>
-                        Rp {discountedPrice.toLocaleString('id-ID')}
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {activePromo && (
+                          <span style={{ fontSize: 11, color: '#94a3b8', textDecoration: 'line-through' }}>
+                            Rp {Number(svc.price || 0).toLocaleString('id-ID')}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 14, fontWeight: 800, color: activePromo ? '#f59e0b' : '#064058' }}>
+                          Rp {Number(discountedPrice || 0).toLocaleString('id-ID')}
+                        </span>
                       </div>
-                    </div>
                   </div>
 
                   {svc.description && (
@@ -255,18 +258,54 @@ const AdminServiceManagement = () => {
                 {/* Image Upload */}
                 <div>
                   <label className="adm-field-label">Foto Layanan</label>
-                  <label style={{
-                    display: 'block', width: '100%', height: 130, border: '2px dashed #e2e8f0', borderRadius: 12, cursor: 'pointer',
-                    backgroundImage: formData.image && !formData.image.includes('placeholder') ? `url(${formData.image})` : 'none',
-                    backgroundSize: 'cover', backgroundPosition: 'center',
-                    background: formData.image && !formData.image.includes('placeholder') ? undefined : '#f8fafc',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6
-                  }}>
-                    {(!formData.image || formData.image.includes('placeholder')) && (
-                      <><ImageIcon size={24} color="#94a3b8" /><span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>Tap untuk upload</span></>
+                  <div style={{ position: 'relative' }}>
+                    {/* Preview area */}
+                    {formData.image && (formData.image.startsWith('data:') || formData.image.startsWith('http')) ? (
+                      <div style={{ position: 'relative', width: '100%', height: 160, borderRadius: 12, overflow: 'hidden', border: '2px solid #e2e8f0' }}>
+                        <img
+                          src={formData.image}
+                          alt="Preview"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                        <div style={{
+                          position: 'absolute', bottom: 0, left: 0, right: 0,
+                          background: 'rgba(0,0,0,0.5)', padding: '8px 12px',
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                        }}>
+                          <span style={{ color: 'white', fontSize: 11, fontWeight: 600 }}>
+                            {formData.image.startsWith('data:') ? '✅ Foto baru dipilih' : '📷 Foto saat ini'}
+                          </span>
+                          <label style={{ color: '#93c5fd', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                            Ganti Foto
+                            <input type="file" style={{ display: 'none' }} accept="image/*" onChange={handleImageChange} />
+                          </label>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, image: '' })}
+                          style={{
+                            position: 'absolute', top: 8, right: 8, background: '#ef4444', color: 'white',
+                            border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                          }}
+                          title="Hapus Foto"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <label style={{
+                        width: '100%', height: 130, border: '2px dashed #e2e8f0', borderRadius: 12, cursor: 'pointer',
+                        background: '#f8fafc', display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center', gap: 6
+                      }}>
+                        <ImageIcon size={28} color="#94a3b8" />
+                        <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>Tap untuk upload foto</span>
+                        <span style={{ fontSize: 10, color: '#cbd5e1' }}>JPG, PNG, WEBP</span>
+                        <input type="file" style={{ display: 'none' }} accept="image/*" onChange={handleImageChange} />
+                      </label>
                     )}
-                    <input type="file" style={{ display: 'none' }} accept="image/*" onChange={handleImageChange} />
-                  </label>
+                  </div>
                 </div>
 
                 <div>
@@ -373,6 +412,53 @@ const AdminServiceManagement = () => {
           </div>
         </div>
       )}
+      {/* Confirmation Modal */}
+      {confirmDeleteId !== null && (
+        <div className="adm-modal-overlay" style={{ alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setConfirmDeleteId(null)}>
+          <div className="adm-modal-sheet" style={{ maxWidth: 360, width: '100%', borderRadius: '24px', textAlign: 'center', padding: '24px 20px', margin: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+            <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 800, color: '#0f172a' }}>Hapus Layanan</h3>
+            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
+              Apakah Anda yakin ingin menghapus layanan ini? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button 
+                type="button"
+                onClick={() => setConfirmDeleteId(null)}
+                style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid #e2e8f0', background: 'white', color: '#4b5563', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+              >
+                Batal
+              </button>
+              <button 
+                type="button"
+                onClick={async () => {
+                  const id = confirmDeleteId;
+                  setConfirmDeleteId(null);
+                  try {
+                    await serviceService.deleteService(id);
+                    setNotification({ show: true, message: 'Layanan berhasil dihapus!', type: 'success' });
+                    loadData();
+                  } catch (err) {
+                    setNotification({ show: true, message: 'Gagal menghapus layanan.', type: 'error' });
+                  }
+                }}
+                style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: '#ef4444', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Component */}
+      <Notification
+        show={notification.show}
+        message={notification.message}
+        type={notification.type}
+        onClose={() => setNotification({ ...notification, show: false })}
+      />
+
       <style>{`
         .hide-scroll::-webkit-scrollbar {
           display: none;

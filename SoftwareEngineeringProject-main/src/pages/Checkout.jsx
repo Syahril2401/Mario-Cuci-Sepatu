@@ -10,7 +10,7 @@ import {
   AlertCircle, UploadCloud, X, MapPin,
   Calendar, Info, ShoppingBag, Truck,
   User, CreditCard, ChevronRight, Check,
-  ChevronLeft
+  ChevronLeft, ZoomIn
 } from 'lucide-react';
 import './Pages.css';
 
@@ -36,10 +36,8 @@ const Checkout = () => {
     const initQuota = async () => {
       try {
         const statsToday = await orderService.getDailyStats(today);
+        setPickupDate(''); // always start empty to force user to choose
         if (statsToday.isFull) {
-          // If full, we default to the current day but show error, or let user pick another.
-          // Since findNextAvailableDate is missing from orderService, we just inform the user.
-          setPickupDate(today);
           setRemainingQuota(0);
           setQuantity(1); // will be validated later
           setQuotaInfo({
@@ -47,14 +45,14 @@ const Checkout = () => {
             message: "Kuota pemesanan hari ini sudah penuh. Silakan pilih tanggal lain."
           });
         } else {
-          setPickupDate(today);
           setRemainingQuota(statsToday.remaining || 20);
           setQuotaInfo({
             isFull: false,
-            message: `Sisa slot hari ini: ${statsToday.remaining || 20} pesanan`
+            message: `Silakan pilih tanggal. Slot hari ini: ${statsToday.remaining || 20} pair`
           });
         }
       } catch (err) {
+        setPickupDate('');
         setRemainingQuota(20);
       }
     };
@@ -68,8 +66,7 @@ const Checkout = () => {
     try {
       const stats = await orderService.getDailyStats(newDate);
       if (stats.isFull) {
-        setPickupDate(newDate);
-        setRemainingQuota(0);
+        // We DO NOT set pickupDate so it reverts to the previous value (or empty)
         setQuotaInfo({
           isFull: true,
           message: `Kuota pemesanan tanggal ${newDate} sudah penuh.`
@@ -82,7 +79,7 @@ const Checkout = () => {
         setRemainingQuota(stats.remaining || 20);
         setQuotaInfo({
           isFull: false,
-          message: `Sisa slot tanggal ini: ${stats.remaining || 20} pesanan`
+          message: `Sisa slot tanggal ini: ${stats.remaining || 20} pair`
         });
         if (quantity > (stats.remaining || 20)) {
            setQuantity(stats.remaining || 20);
@@ -115,6 +112,7 @@ const Checkout = () => {
     }
   }, [service, pickupDate]);
   const [paymentMethod, setPaymentMethod] = useState('QRIS');
+  const [profile, setProfile] = useState(null);
 
   const [photos, setPhotos] = useState([]);
 
@@ -132,6 +130,7 @@ const Checkout = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showStorageModal, setShowStorageModal] = useState(false);
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
 
   // Dynamic Labels and Placeholders
   const pickupLabel = pickupMethod === 'Ambil Sendiri' ? 'Drop Date' : 'Pickup Date';
@@ -142,6 +141,12 @@ const Checkout = () => {
 
   // Initial Guard & Setup
   useEffect(() => {
+    if (user && user.role === 'admin') {
+      alert('Admin tidak diperbolehkan untuk membuat pesanan.');
+      navigate('/home');
+      return;
+    }
+
     if (!service) {
       navigate('/home');
       return;
@@ -149,10 +154,11 @@ const Checkout = () => {
 
     // Set Default Address from Profile
     userService.getProfile().then(res => {
-      const profile = res.data;
-      if (profile && profile.addresses && profile.addresses.length > 0) {
-        setAddresses(profile.addresses);
-        const def = profile.addresses.find(a => a.isDefault) || profile.addresses[0];
+      const profileData = res.data;
+      setProfile(profileData);
+      if (profileData && profileData.addresses && profileData.addresses.length > 0) {
+        setAddresses(profileData.addresses);
+        const def = profileData.addresses.find(a => a.isDefault) || profileData.addresses[0];
         setSelectedAddress(def);
       } else if (user && user.addresses && user.addresses.length > 0) {
         setAddresses(user.addresses);
@@ -297,7 +303,11 @@ const Checkout = () => {
   };
 
   const validateForm = () => {
-    if (!selectedAddress) return 'Please add an address in your profile first.';
+    const name = profile?.name || user?.name;
+    const phone = profile?.phone || user?.phone;
+    if (!name || !phone || !selectedAddress) {
+      return 'Silakan lengkapi data diri Anda (Nama, Nomor Telepon, dan Alamat) di profil sebelum melakukan pemesanan.';
+    }
 
     // Radius Validation
     if (pickupMethod === 'Dijemput Admin' || returnMethod === 'Diantar Admin') {
@@ -318,8 +328,8 @@ const Checkout = () => {
     }
 
     if (quantity < 1) return 'Quantity must be at least 1.';
-    if (remainingQuota === 0) return `Maaf, kuota tanggal ${pickupDate} sudah penuh (Max 20 pesanan/hari). Silakan pilih tanggal lain.`;
-    if (quantity > remainingQuota) return `Kuota sisa untuk tanggal ${pickupDate} hanya ${remainingQuota} pesanan. Silakan kurangi jumlah barang.`;
+    if (remainingQuota === 0) return `Maaf, kuota tanggal ${pickupDate} sudah penuh (Max 20 pair/hari). Silakan pilih tanggal lain.`;
+    if (quantity > remainingQuota) return `Sisa slot untuk tanggal ${pickupDate} hanya ${remainingQuota} pair. Silakan kurangi jumlah barang.`;
     if (!pickupDate) return 'Please select a pickup date.';
     if (pickupDate < today) return 'Pickup date cannot be in the past.';
     if (!deliveryDate) return 'Please select a delivery date.';
@@ -328,6 +338,21 @@ const Checkout = () => {
   };
 
   const handleBuyNow = async () => {
+    // Re-check quota freshly before submitting
+    try {
+      const freshStats = await orderService.getDailyStats(pickupDate);
+      if (freshStats.isFull) {
+        setQuotaInfo({ isFull: true, message: `Kuota tanggal ${pickupDate} sudah penuh.` });
+        setRemainingQuota(0);
+        setError(`Maaf, kuota tanggal ${pickupDate} sudah habis. Silakan pilih tanggal lain.`);
+        setTimeout(() => {
+          const errBox = document.getElementById('error-box');
+          if (errBox) { errBox.classList.remove('shake-anim'); void errBox.offsetWidth; errBox.classList.add('shake-anim'); errBox.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        }, 50);
+        return;
+      }
+    } catch (_) { /* proceed even if check fails */ }
+
     const err = validateForm();
     if (err) {
       setError(err);
@@ -387,8 +412,10 @@ const Checkout = () => {
       console.error(error);
       if (error.message === 'STORAGE_FULL') {
         setShowStorageModal(true);
+      } else if (error.response && error.response.data && error.response.data.message) {
+        setError(`Error: ${error.response.data.message}`);
       } else {
-        setError('Failed to create order. Please try again.');
+        setError(`Failed to create order. Please try again. (${error.message || 'Unknown error'})`);
       }
       setIsLoading(false);
     }
@@ -520,7 +547,6 @@ const Checkout = () => {
             >
               <div style={{ fontSize: '1.1rem' }}>🧍</div>
               <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>Self Drop</div>
-              {pickupMethod === 'Ambil Sendiri' && <Check size={14} color="#064058" style={{ marginLeft: 'auto' }} />}
             </div>
             <div
               className={`selectable-card ${pickupMethod === 'Dijemput Admin' ? 'active' : ''}`}
@@ -529,7 +555,6 @@ const Checkout = () => {
             >
               <div style={{ fontSize: '1.1rem' }}>🚚</div>
               <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>Pickup</div>
-              {pickupMethod === 'Dijemput Admin' && <Check size={14} color="#064058" style={{ marginLeft: 'auto' }} />}
             </div>
           </div>
         </div>
@@ -544,7 +569,6 @@ const Checkout = () => {
             >
               <div style={{ fontSize: '1.1rem' }}>🧍</div>
               <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>Self Pickup</div>
-              {returnMethod === 'Ambil Sendiri' && <Check size={14} color="#064058" style={{ marginLeft: 'auto' }} />}
             </div>
             <div
               className={`selectable-card ${returnMethod === 'Diantar Admin' ? 'active' : ''}`}
@@ -553,7 +577,6 @@ const Checkout = () => {
             >
               <div style={{ fontSize: '1.1rem' }}>🚚</div>
               <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>Delivery</div>
-              {returnMethod === 'Diantar Admin' && <Check size={14} color="#064058" style={{ marginLeft: 'auto' }} />}
             </div>
           </div>
         </div>
@@ -581,7 +604,7 @@ const Checkout = () => {
                   if (quantity < remainingQuota) {
                      setQuantity(quantity + 1);
                   } else {
-                     setError(`Sisa kuota harian hanya ${remainingQuota} pesanan.`);
+                     setError(`Sisa slot harian hanya ${remainingQuota} pair lagi.`);
                      setTimeout(() => {
                        const errBox = document.getElementById('error-box');
                        if (errBox) {
@@ -704,7 +727,12 @@ const Checkout = () => {
                   position: 'relative', borderRadius: '14px', overflow: 'hidden', border: '1px solid #E2E8F0', 
                   flexShrink: 0, width: '120px', height: '120px' 
                 }}>
-                  <img src={p} alt={`Preview ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img
+                    src={p}
+                    alt={`Preview ${idx + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }}
+                    onClick={() => setLightboxPhoto(p)}
+                  />
                   <button
                     onClick={() => removePhoto(idx)}
                     style={{
@@ -716,6 +744,18 @@ const Checkout = () => {
                   >
                     <X size={14} />
                   </button>
+                  {/* Zoom hint overlay */}
+                  <div
+                    onClick={() => setLightboxPhoto(p)}
+                    style={{
+                      position: 'absolute', bottom: 0, left: 0, right: 0,
+                      background: 'linear-gradient(transparent, rgba(0,0,0,0.35))',
+                      display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
+                      paddingBottom: '5px', cursor: 'zoom-in', pointerEvents: 'none'
+                    }}
+                  >
+                    <ZoomIn size={13} color="white" />
+                  </div>
                 </div>
               ))}
               
@@ -786,12 +826,14 @@ const Checkout = () => {
           style={{
             width: 'auto', padding: '10px 24px', borderRadius: '12px',
             fontSize: '0.9rem', fontWeight: 800, boxShadow: '0 4px 12px rgba(6, 64, 88, 0.2)',
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
+            opacity: (isLoading || quotaInfo.isFull) ? 0.6 : 1,
+            cursor: (isLoading || quotaInfo.isFull) ? 'not-allowed' : 'pointer'
           }}
           onClick={handleBuyNow}
-          disabled={isLoading}
+          disabled={isLoading || quotaInfo.isFull}
         >
-          {isLoading ? "Wait..." : "Buy Now"}
+          {isLoading ? "Wait..." : quotaInfo.isFull ? "Slot Penuh" : "Buy Now"}
         </button>
       </div>
 
@@ -929,6 +971,42 @@ const Checkout = () => {
         </div>
       )}
 
+      {/* Lightbox Modal */}
+      {lightboxPhoto && (
+        <div
+          onClick={() => setLightboxPhoto(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20, animation: 'fadeInLightbox 0.2s ease-out'
+          }}
+        >
+          <button
+            onClick={() => setLightboxPhoto(null)}
+            style={{
+              position: 'absolute', top: 20, right: 20,
+              background: 'rgba(255,255,255,0.15)', border: 'none',
+              borderRadius: '50%', width: 42, height: 42,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: 'white', backdropFilter: 'blur(4px)'
+            }}
+          >
+            <X size={22} />
+          </button>
+          <img
+            src={lightboxPhoto}
+            alt="Preview Besar"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '100%', maxHeight: '90vh',
+              objectFit: 'contain', borderRadius: 16,
+              boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+            }}
+          />
+        </div>
+      )}
+
       <style>{`
         .selectable-card:active {
           transform: scale(0.96);
@@ -948,6 +1026,10 @@ const Checkout = () => {
         input:focus {
           border-color: #064058 !important;
           box-shadow: 0 0 0 3px rgba(6, 64, 88, 0.1);
+        }
+        @keyframes fadeInLightbox {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
       `}</style>
     </div>

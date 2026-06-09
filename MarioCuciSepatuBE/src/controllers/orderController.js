@@ -1,13 +1,16 @@
 const Order = require('../models/orderModel');
+const User = require('../models/userModel');
 
-const DAILY_LIMIT = 20; // as specified in frontend
+const DAILY_LIMIT = 20;
 
+// Parsing JSON field yang dikembalikan dari DB sebagai string
 const parseOrderJSON = (order) => {
+  if (!order) return order;
   if (order.address && typeof order.address === 'string') {
-    try { order.address = JSON.parse(order.address); } catch(e){}
+    try { order.address = JSON.parse(order.address); } catch(e) {}
   }
   if (order.photos && typeof order.photos === 'string') {
-    try { order.photos = JSON.parse(order.photos); } catch(e){}
+    try { order.photos = JSON.parse(order.photos); } catch(e) {}
   }
   return order;
 };
@@ -56,7 +59,7 @@ exports.getDailyStats = async (req, res) => {
     const count = await Order.getDailyCount(targetDate);
     res.json({
       data: {
-        count: count,
+        count,
         limit: DAILY_LIMIT,
         remaining: Math.max(0, DAILY_LIMIT - count),
         isFull: count >= DAILY_LIMIT
@@ -69,28 +72,55 @@ exports.getDailyStats = async (req, res) => {
 
 exports.createOrder = async (req, res) => {
   try {
+    // Block Admin from ordering
+    if (req.user && req.user.role === 'admin') {
+      return res.status(403).json({ message: 'Admin tidak diperbolehkan untuk membuat pesanan.' });
+    }
+
+    // Verify user profile is complete
+    const userProfile = await User.findById(req.user.id);
+    if (!userProfile) {
+      return res.status(404).json({ message: 'User tidak ditemukan.' });
+    }
+
+    let userAddresses = [];
+    try {
+      if (userProfile.address) {
+        userAddresses = JSON.parse(userProfile.address);
+      }
+    } catch (e) {}
+
+    if (!userProfile.nama || !userProfile.phone || !userAddresses || userAddresses.length === 0) {
+      return res.status(400).json({
+        message: 'Silakan lengkapi data diri Anda (Nama, Nomor Telepon, dan Alamat) di profil sebelum melakukan pemesanan.'
+      });
+    }
+
     const orderData = req.body;
 
-    // Validasi jarak maksimal 15KM untuk penjemputan/pengantaran
+    // Validasi jarak maksimal 15KM
     const distance = parseFloat(orderData.distance) || 0;
-    if (distance > 15 && (orderData.pickupMethod === 'HOME_PICKUP' || orderData.returnMethod === 'HOME_DELIVERY')) {
-      return res.status(400).json({ 
-        message: 'Jarak terlalu jauh (Maksimal 15KM). Silakan pilih metode antar dan ambil sendiri (Self Drop / Self Pickup).' 
+    const pickupMethod = orderData.pickupMethod;
+    const returnMethod = orderData.returnMethod;
+
+    if (distance > 15 && (pickupMethod === 'HOME_PICKUP' || pickupMethod === 'COURIER_PICKUP' ||
+                          returnMethod === 'HOME_DELIVERY' || returnMethod === 'COURIER_DELIVERY')) {
+      return res.status(400).json({
+        message: 'Jarak terlalu jauh (Maksimal 15KM). Silakan pilih metode antar dan ambil sendiri (Self Drop / Self Pickup).'
       });
     }
 
     const requestedDate = orderData.pickup_date;
-    const count = await Order.getDailyCount(requestedDate);
-    
+    const currentPairs = await Order.getDailyCount(requestedDate);
+    const requestedQuantity = parseInt(orderData.quantity) || 1;
+
     let is_overflow_order = false;
     let auto_shifted = false;
     let finalPickupDate = requestedDate;
-    
-    // Simplification of "find next available date"
-    if (count >= DAILY_LIMIT) {
+
+    if (currentPairs + requestedQuantity > DAILY_LIMIT) {
       is_overflow_order = true;
       auto_shifted = true;
-      // In a real scenario, loop to find the next date. Here just adding 1 day for mock logic
       const nextDate = new Date(requestedDate);
       nextDate.setDate(nextDate.getDate() + 1);
       finalPickupDate = nextDate.toISOString().split('T')[0];
@@ -102,50 +132,35 @@ exports.createOrder = async (req, res) => {
     }
 
     const newOrder = {
-      order_id: null, // Let DB generate it
-      user_id: req.user.id, // from verifyToken middleware
-      service_id: orderData.service_id || orderData.service_type_id,
-      pickup_date: finalPickupDate,
-      delivery_date: orderData.delivery_date,
-      status: 'PENDING',
-      pickupMethod: orderData.pickupMethod,
-      returnMethod: orderData.returnMethod,
-      address: typeof orderData.address === 'object' ? JSON.stringify(orderData.address) : orderData.address,
-      total_price: orderData.total_price || orderData.totalPrice || 0,
+      user_id:       req.user.id,
+      service_id:    orderData.service_id || orderData.service_type_id,
+      pickup_date:   finalPickupDate,
+      delivery_date: orderData.delivery_date || null,
+      status:        'PENDING',
+      pickupMethod:  pickupMethod,
+      returnMethod:  returnMethod,
+      address:       orderData.address,
+      total_price:   orderData.total_price || orderData.totalPrice || 0,
       is_overflow_order,
       auto_shifted,
-      payment_method: orderData.payment?.method || null,
+      payment_method: orderData.payment?.method || 'QRIS',
       payment_status: orderData.payment?.status || 'PENDING',
-      notes: orderData.notes || '',
-      quantity: orderData.quantity || 1,
-      photos: orderData.photos ? JSON.stringify(orderData.photos) : '[]',
-      originalPrice: orderData.originalPrice || null,
+      notes:          orderData.notes || '',
+      quantity:       orderData.quantity || 1,
+      photos:         orderData.photos ? JSON.stringify(orderData.photos) : null,
+      originalPrice:  orderData.originalPrice || null,
       discountAmount: orderData.discountAmount || null,
-      promo_id: orderData.promo_id || null
+      promo_id:       orderData.promo_id || null,
+      order_date:     orderData.order_date || null
     };
 
     const result = await Order.create(newOrder);
     const orderId = result.insertId;
 
-    try {
-      await Order.insertDetail({
-        order_id: orderId,
-        service_type_id: newOrder.service_id,
-        quantity: newOrder.quantity,
-        subtotal: newOrder.total_price,
-        alamat: newOrder.address,
-        pickup_method_id: newOrder.pickupMethod === 'SELF_DROP' ? 1 : 2,
-        return_method_id: newOrder.returnMethod === 'SELF_PICKUP' ? 1 : 2,
-        dropDate: newOrder.pickup_date,
-        pickupDate: newOrder.delivery_date,
-        notes: newOrder.notes,
-        photoCust: newOrder.photos
-      });
-    } catch (err) {
-      console.error('Failed to insert order details:', err);
-    }
-
-    res.status(201).json({ message: 'Order created', data: { ...newOrder, order_id: orderId } });
+    res.status(201).json({
+      message: 'Order created',
+      data: { ...newOrder, order_id: orderId }
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -154,8 +169,8 @@ exports.createOrder = async (req, res) => {
 exports.updateOrder = async (req, res) => {
   try {
     const orderData = req.body;
-    // We pass the whole body, the model will pick what it needs
-    await Order.update(req.params.id, orderData);
+    const uploaderId = req.user?.id || null;
+    await Order.update(req.params.id, orderData, uploaderId);
     res.json({ message: 'Order updated', data: { order_id: req.params.id, ...orderData } });
   } catch (error) {
     res.status(500).json({ message: error.message });

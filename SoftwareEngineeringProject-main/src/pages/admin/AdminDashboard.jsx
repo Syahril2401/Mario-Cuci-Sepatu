@@ -63,7 +63,7 @@ const AdminDashboard = () => {
       if (!order) return;
 
       const flow = getStatusFlow(order);
-      const norm = currentStatus === 'PENDING' ? 'MENUNGGU_VERIFIKASI' : currentStatus;
+      const norm = currentStatus === 'PENDING' ? 'WAITING_VERIFICATION' : currentStatus;
       const ci = flow.indexOf(norm);
       const next = ci !== -1 && ci < flow.length - 1 ? flow[ci + 1] : null;
 
@@ -71,8 +71,8 @@ const AdminDashboard = () => {
         setConfirmPopup({
           orderId: order.order_id,
           nextStatus: next,
-          title: (norm === 'MENUNGGU_VERIFIKASI') ? 'Konfirmasi Pembayaran' : 'Proses Pesanan',
-          message: (norm === 'MENUNGGU_VERIFIKASI') ? 'Verifikasi bahwa pembayaran customer sudah diterima dan pesanan sedang diproses. Lanjutkan?' : 'Lanjutkan ke tahap proses berikutnya?'
+          title: (norm === 'WAITING_VERIFICATION' || norm === 'MENUNGGU_VERIFIKASI') ? 'Konfirmasi Pembayaran' : 'Proses Pesanan',
+          message: (norm === 'WAITING_VERIFICATION' || norm === 'MENUNGGU_VERIFIKASI') ? 'Verifikasi bahwa pembayaran customer sudah diterima dan pesanan sedang diproses. Lanjutkan?' : 'Lanjutkan ke tahap proses berikutnya?'
         });
       }
     } catch (error) {
@@ -168,7 +168,7 @@ const AdminDashboard = () => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {needsAttention.slice(0, 2).map((o, i) => {
-              const isVerifikasi = o.status === 'MENUNGGU_VERIFIKASI';
+              const isVerifikasi = o.status === 'WAITING_VERIFICATION' || o.status === 'MENUNGGU_VERIFIKASI';
               const isPending = o.status === 'PENDING';
               return (
                 <div key={o.order_id} className={`adm-attention-card ${isVerifikasi ? '' : 'blue'}`}>
